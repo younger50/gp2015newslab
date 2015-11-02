@@ -135,6 +135,7 @@ void FyMain(int argc, char **argv)
 	uDir[0] = -0.116f; uDir[1] = -0.031f; uDir[2] = 0.993f;
 	camera.SetPosition(pos);
 	camera.SetDirection(fDir, uDir);
+	Camera3PersonView(TRUE); // default face back
 
 	// light
 	float mainLightPos[3] = { -4579.0, -714.0, 15530.0 };
@@ -156,8 +157,9 @@ void FyMain(int argc, char **argv)
 	// set Hotkeys
 	FyDefineHotKey(FY_ESCAPE, QuitGame, FALSE);  // escape for quiting the game
 	FyDefineHotKey(FY_UP, Movement, FALSE);      // Up for moving forward
-	FyDefineHotKey(FY_RIGHT, Movement, FALSE);   // Right for turning right
-	FyDefineHotKey(FY_LEFT, Movement, FALSE);    // Left for turning left
+	FyDefineHotKey(FY_RIGHT, Movement, FALSE);   // Right for moving right
+	FyDefineHotKey(FY_LEFT, Movement, FALSE);    // Left for moving left
+	FyDefineHotKey(FY_DOWN, Movement, FALSE);	 // Back for moving back
 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
@@ -167,7 +169,7 @@ void FyMain(int argc, char **argv)
 	// bind timers, frame rate = 30 fps
 	FyBindTimer(0, 30.0f, GameAI, TRUE);
 	FyBindTimer(1, 30.0f, RenderIt, TRUE);
-	FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
+	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
 }
@@ -179,27 +181,113 @@ void FyMain(int argc, char **argv)
 void GameAI(int skip)
 {
 	FnCharacter actor;
+	float speed = 10.0f;
+	float rotate = 5.0f;
 
 	// play character pose
 	actor.ID(actorID);
 	actor.Play(LOOP, (float)skip, FALSE, TRUE);
 
-	//===============================
-	//		Homework #01 part 1
-	//===============================
-	float speed = 10.0f;
-	float rotate = 5.0f;
-
+	// camera
+	float apos[3], cpos[3]; //actor,camera position
+	float fDir[3], uDir[3]; //actor face, up, right dir;
+	float rDir[3];
+	float cfDir[3], cuDir[3]; // camera face, up dir
+	float distance = 500, height = 100;
+	FnCamera camera;
+	camera.ID(cID);
+	camera.GetPosition(cpos);
+	camera.GetDirection(cfDir, cuDir);
+	
+	// front
 	if (FyCheckHotKeyStatus(FY_UP)) {
+		// get new actor face dir
+		fDir[0] = cfDir[0];
+		fDir[1] = cfDir[1];
+		fDir[2] = 0;
+		uDir[0] = 0;
+		uDir[1] = 0;
+		uDir[2] = 1;
+		actor.SetDirection(fDir, uDir);
 		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+		// get actor position & direction
+		actor.GetPosition(apos);
+		actor.GetDirection(fDir, uDir);
+		// calculate camera position & direction
+		// camera pos
+		cpos[0] = apos[0] - fDir[0] * distance;
+		cpos[1] = apos[1] - fDir[1] * distance;
+		cpos[2] = apos[2] + uDir[2] * height;
+		// camera set
+		camera.SetPosition(cpos);
 	}
-
-	if (FyCheckHotKeyStatus(FY_LEFT)) {
-		actor.TurnRight(-rotate);
+	// left circle
+	else if (FyCheckHotKeyStatus(FY_LEFT)) {
+		// set actor face left then move forward
+		cross3(fDir, cuDir, cfDir);
+		uDir[0] = 0;
+		uDir[1] = 0;
+		uDir[2] = 1;
+		actor.SetDirection(fDir, uDir);
+		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+		// camera rotate
+		// get actor position & direction
+		actor.GetPosition(apos);
+		actor.GetDirection(fDir, uDir);
+		// calculate camera position & direction
+		// camera face
+		cfDir[0] = apos[0] - cpos[0];
+		cfDir[1] = apos[1] - cpos[1];
+		cfDir[2] = apos[2] - cpos[2] + height / 2;
+		// camera up
+		cross3(cuDir, cfDir, fDir);
+		// camera set
+		camera.SetDirection(cfDir, cuDir);
 	}
-
-	if (FyCheckHotKeyStatus(FY_RIGHT)) {
-		actor.TurnRight(rotate);
+	// right circle
+	else if (FyCheckHotKeyStatus(FY_RIGHT)) {
+		// set actor face right then move forward
+		cross3(fDir, cfDir, cuDir);
+		uDir[0] = 0;
+		uDir[1] = 0;
+		uDir[2] = 1;
+		actor.SetDirection(fDir, uDir);
+		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+		// camera rotate
+		// get actor position & direction
+		actor.GetPosition(apos);
+		actor.GetDirection(fDir, uDir);
+		// calculate camera position & direction
+		// camera face
+		cfDir[0] = apos[0] - cpos[0];
+		cfDir[1] = apos[1] - cpos[1];
+		cfDir[2] = apos[2] - cpos[2] + height / 2;
+		// camera up
+		cross3(cuDir, fDir, cfDir);
+		// camera set
+		camera.SetDirection(cfDir, cuDir);
+	}
+	// back
+	else if (FyCheckHotKeyStatus(FY_DOWN)) {
+		// get new actor face dir
+		fDir[0] = -cfDir[0];
+		fDir[1] = -cfDir[1];
+		fDir[2] = 0;
+		uDir[0] = 0;
+		uDir[1] = 0;
+		uDir[2] = 1;
+		actor.SetDirection(fDir, uDir);
+		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+		// get actor position & direction
+		actor.GetPosition(apos);
+		actor.GetDirection(fDir, uDir);
+		// calculate camera position & direction
+		// camera pos
+		cpos[0] = apos[0] + fDir[0] * distance;
+		cpos[1] = apos[1] + fDir[1] * distance;
+		cpos[2] = apos[2] + uDir[2] * height;
+		// camera set
+		camera.SetPosition(cpos);
 	}
 }
 
