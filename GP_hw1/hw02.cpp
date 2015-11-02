@@ -44,13 +44,21 @@ void MoveCam(int, int);
 void InitZoom(int, int);
 void ZoomCam(int, int);
 
-// 3-vector cross
+// collision cam mod
+void CameraCollision();
+
+// 3D vector cross
 void cross3(float *answer, float *a, float *b){
 	// catious!! no boundary check
 	answer[0] = a[1] * b[2] - a[2] * b[1];
 	answer[1] = -a[0] * b[2] + a[2] * b[0];
 	answer[2] = a[0] * b[1] - a[1] * b[0];
 };
+
+// 3D point distance
+float dist3(float *a, float *b){
+	return (a[0] - b[0])*(a[0] - b[0]) + (a[1] - b[1])*(a[1] - b[1]) + (a[2] - b[2])*(a[2] - b[2]);
+}
 
 /*------------------
 the main program
@@ -59,7 +67,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("NTU@2014 Homework #01 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("NTU@2015 Homework #02 - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -220,6 +228,8 @@ void GameAI(int skip)
 		cpos[2] = apos[2] + uDir[2] * height;
 		// camera set
 		camera.SetPosition(cpos);
+		// collision cam modification
+		CameraCollision();
 	}
 	// left circle
 	else if (FyCheckHotKeyStatus(FY_LEFT)) {
@@ -288,9 +298,12 @@ void GameAI(int skip)
 		cpos[2] = apos[2] + uDir[2] * height;
 		// camera set
 		camera.SetPosition(cpos);
+		// collision cam modification
+		CameraCollision();
 	}
 }
 
+//
 void Camera3PersonView(int skip)
 {
 	// camera
@@ -317,6 +330,57 @@ void Camera3PersonView(int skip)
 	// camera up
 	cross3( rDir, fDir, uDir);
 	cross3( cuDir, rDir, cfDir);
+	// camera set
+	camera.SetPosition(cpos);
+	camera.SetDirection(cfDir, cuDir);
+}
+
+// collision cam modification
+void CameraCollision(){
+	// collision check
+	float apos[3], cpos[3]; //actor,camera position
+	float fDir[3], uDir[3]; //actor face, up, right dir;
+	float rDir[3];
+	float cfDir[3], cuDir[3]; // camera face, up dir
+	float distance = 500, height = 100;
+	float hitray[3], hitpos[3]; // collision ray and position
+	FnCharacter actor;
+	FnCamera camera;
+	FnObject terrain;
+	actor.ID(actorID);
+	camera.ID(cID);
+	terrain.ID(tID);
+	// get actor position & direction
+	actor.GetPosition(apos);
+	actor.GetDirection(fDir, uDir);
+	// get camera pos & dir
+	camera.GetPosition(cpos);
+	camera.GetDirection(cfDir, cuDir);
+	// hitray from actor to camera
+	hitray[0] = cpos[0] - apos[0];
+	hitray[1] = cpos[1] - apos[1];
+	hitray[2] = cpos[2] - apos[2];
+	if (terrain.HitTest(apos, hitray, hitpos) > 0){
+		// check distance of camera and hitpoint to camera
+		if (dist3(apos, hitpos)<dist3(apos, cpos)){
+			cpos[0] = hitpos[0];
+			cpos[1] = hitpos[1];
+			cpos[2] = apos[2] + sqrt(distance*distance + height*height - (apos[0] - cpos[0])*(apos[0] - cpos[0]) - (apos[1] - cpos[1])*(apos[1] - cpos[1]));
+		}
+		// recount raised camera position
+	}
+	// camera face
+	cfDir[0] = apos[0] - cpos[0];
+	cfDir[1] = apos[1] - cpos[1];
+	cfDir[2] = apos[2] - cpos[2] + height / 2;
+	// camera up
+	cross3(rDir, fDir, uDir);
+	cross3(cuDir, cfDir, rDir);
+	// rewind down ward
+	if (cuDir[2] < 0){
+		cross3(rDir, uDir, fDir);
+		cross3(cuDir, cfDir, rDir);
+	}
 	// camera set
 	camera.SetPosition(cpos);
 	camera.SetDirection(cfDir, cuDir);
@@ -380,7 +444,6 @@ void RenderIt(int skip)
 	// swap buffer
 	FySwapBuffers();
 }
-
 
 /*------------------
 movement control
