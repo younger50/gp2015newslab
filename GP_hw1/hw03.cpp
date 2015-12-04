@@ -30,6 +30,9 @@ ACTIONid UltimateAttackID;
 ACTIONid GuardID;
 ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
 
+bool isCombo = false;
+ACTIONid NextAttackID;
+
 // npc1 = Donzo
 ACTIONid npc1_IdleID, npc1_RunID, npc1_CurPoseID;
 ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID; 
@@ -259,9 +262,9 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_RIGHT, Movement, FALSE);   // Right for moving right
 	FyDefineHotKey(FY_LEFT, Movement, FALSE);    // Left for moving left
 	FyDefineHotKey(FY_DOWN, Movement, FALSE);	 // Back for moving back
-	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // NormalAttack1
-	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // NormalAttack2
-	FyDefineHotKey(FY_C, ActorAttack, FALSE);    // HeavyAttack1
+	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
+	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
+	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
@@ -296,10 +299,24 @@ void GameAI(int skip)
 	{
 		actor.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
-	else if (CurPoseID == NormalAttack1ID || CurPoseID == NormalAttack2ID || CurPoseID == NormalAttack3ID)
+	else if (CurPoseID == NormalAttack1ID || 
+			 CurPoseID == NormalAttack2ID || 
+			 CurPoseID == NormalAttack3ID ||
+			 CurPoseID == NormalAttack4ID ||
+			 CurPoseID == HeavyAttack1ID  ||
+			 CurPoseID == HeavyAttack2ID  ||
+			 CurPoseID == HeavyAttack3ID  ||
+			 CurPoseID == UltimateAttackID)
 	{
 		if (!actor.Play(ONCE, (float)skip, TRUE)){
-			actor.SetCurrentAction(NULL, 0, IdleID);
+			if (isCombo)
+			{
+				actor.SetCurrentAction(NULL, 0, NextAttackID);
+				isCombo = false;
+			}
+			else{
+				actor.SetCurrentAction(NULL, 0, IdleID);
+			}
 		}
 	}
 
@@ -594,20 +611,57 @@ void Movement(BYTE code, BOOL4 value)
 
 void ActorAttack(BYTE code, BOOL4 value)
 {
+	if (!value) return;
 	FnCharacter actor;
 	actor.ID(actorID);
+	CurPoseID = actor.GetCurrentAction(NULL, 0);
 	if (code == FY_Z){
-		CurPoseID = NormalAttack1ID;
+		if (CurPoseID == IdleID || CurPoseID == RunID){
+			actor.SetCurrentAction(NULL, 0, NormalAttack1ID);
+			isCombo = false;
+			NextAttackID = NormalAttack2ID;
+		}
+		else if (CurPoseID == NormalAttack1ID){
+			isCombo = true;
+			NextAttackID = NormalAttack2ID;
+		}
+		else if (CurPoseID == NormalAttack2ID){
+			isCombo = true;
+			NextAttackID = NormalAttack3ID;
+		}
+		else if (CurPoseID == NormalAttack3ID){
+			isCombo = true;
+			NextAttackID = NormalAttack4ID;
+		}
+		else if (CurPoseID == NormalAttack4ID){
+			isCombo = true;
+			NextAttackID = NormalAttack1ID;
+		}
 	}
 	else if (code == FY_X){
-		CurPoseID = NormalAttack2ID;
+		if (CurPoseID == IdleID || CurPoseID == RunID){
+			actor.SetCurrentAction(NULL, 0, HeavyAttack1ID);
+			isCombo = false;
+			NextAttackID = HeavyAttack2ID;
+		}
+		else if (CurPoseID == HeavyAttack1ID){
+			isCombo = true;
+			NextAttackID = HeavyAttack2ID;
+		}
+		else if (CurPoseID == HeavyAttack2ID){
+			isCombo = true;
+			NextAttackID = HeavyAttack3ID;
+		}
+		else if (CurPoseID == HeavyAttack3ID){
+			isCombo = true;
+			NextAttackID = HeavyAttack1ID;
+		}
 	}
 	else if (code == FY_C){
-		CurPoseID = NormalAttack3ID;
+		if (CurPoseID == IdleID || CurPoseID == RunID){
+			actor.SetCurrentAction(NULL, 0, UltimateAttackID);
+		}
 	}
-	actor.SetCurrentAction(NULL, 0, CurPoseID);
-	actorAttacking = 1;
-	actorAttackFrame = 0;
 }
 
 
