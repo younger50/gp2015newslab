@@ -30,8 +30,16 @@ ACTIONid UltimateAttackID;
 ACTIONid GuardID;
 ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
 
+unsigned int AttackRange = 100;
+float AttackRadius = 1.0f;
+
 bool isCombo = false;
 ACTIONid NextAttackID;
+
+void PlayActorAction(int skip); // play actor action frame by frame
+
+void isNPCHit();
+
 
 // npc1 = Donzo
 ACTIONid npc1_IdleID, npc1_RunID, npc1_CurPoseID;
@@ -39,6 +47,7 @@ ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID;
 ACTIONid npc1_HeavyAttack1ID;
 ACTIONid npc1_GuardID;
 ACTIONid npc1_Damage1ID, npc1_Damage2ID, npc1_DieID;
+
 
 // npc2 = robber
 ACTIONid npc2_IdleID, npc2_RunID,npc2_CurPoseID;
@@ -58,8 +67,6 @@ void QuitGame(BYTE, BOOL4);
 void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
 
-// play actor action frame by frame
-void PlayActorAction(int skip);
 
 // timer callbacks
 void GameAI(int);
@@ -88,6 +95,10 @@ void cross3(float *answer, float *a, float *b){
 // 3D point distance
 float dist3(float *a, float *b){
 	return (a[0] - b[0])*(a[0] - b[0]) + (a[1] - b[1])*(a[1] - b[1]) + (a[2] - b[2])*(a[2] - b[2]);
+}
+
+float dist2(float *a, float *b){
+	return sqrt((a[0] - b[0])*(a[0] - b[0]) + (a[1] - b[1])*(a[1] - b[1]));
 }
 
 /*------------------
@@ -161,6 +172,7 @@ void FyMain(int argc, char **argv)
 	npc1.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = npc1.PutOnTerrain(npc1_pos);
 
+
 	float npc2_pos[3], npc2_fDir[3], npc2_uDir[3];
 	FnCharacter npc2;
 	npc2.ID(npc2ID);
@@ -214,8 +226,7 @@ void FyMain(int argc, char **argv)
 	actor.Play(START, 0.0f, FALSE, TRUE);
 	actor.TurnRight(90.0f);
 
-	npc1_CurPoseID = npc1_IdleID;
-	npc1.SetCurrentAction(NULL, 0, npc1_CurPoseID);
+	npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
 	npc1.Play(START, 0.0f, FALSE, TRUE);
 	npc1.TurnRight(90.0f);
 
@@ -285,11 +296,15 @@ void FyMain(int argc, char **argv)
 void GameAI(int skip)
 {
 	FnCharacter actor;
+	FnCharacter npc1;
+	FnCharacter npc2;
 	float speed = 10.0f;
 	float rotate = 5.0f;
 
 	// play character pose
 	actor.ID(actorID);
+	npc1.ID(npc1ID);
+	npc2.ID(npc2ID);
 	CurPoseID = actor.GetCurrentAction(NULL);
 	if (CurPoseID == IdleID)
 	{
@@ -308,6 +323,7 @@ void GameAI(int skip)
 			 CurPoseID == HeavyAttack3ID  ||
 			 CurPoseID == UltimateAttackID)
 	{
+		isNPCHit();
 		if (!actor.Play(ONCE, (float)skip, TRUE)){
 			if (isCombo)
 			{
@@ -319,6 +335,19 @@ void GameAI(int skip)
 			}
 		}
 	}
+	CurPoseID = npc1.GetCurrentAction(NULL, 0);
+	if (CurPoseID == npc1_IdleID)
+	{
+		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
+	}
+	else if (CurPoseID == npc1_Damage1ID)
+	{
+		if (!npc1.Play(ONCE, (float)skip, FALSE, TRUE))
+		{
+			npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
+		}
+	}
+	npc2.Play(LOOP, (float)skip, FALSE, TRUE);
 
 	// camera
 	float apos[3], cpos[3]; //actor,camera position
@@ -542,6 +571,31 @@ void RenderIt(int skip)
 	camera.GetPosition(pos);
 	camera.GetDirection(fDir, uDir);
 
+	//get actor's data
+	FnCharacter actor;
+	actor.ID(actorID);
+	FnObject weapon;
+	weapon.ID(actor.GetBoneObject("WeaponDummy03"));
+
+	float actorPos[3], weaponPos[3];
+	actor.GetPosition(actorPos);
+	weapon.GetPosition(weaponPos);
+
+	//get npc1's data
+	FnCharacter npc1;
+	FnObject objNPC1;
+	npc1.ID(npc1ID);
+	objNPC1.ID(npc1.GetBaseObject());
+
+	float npc1Pos[3],npc1Pos2[3];
+	npc1.GetPosition(npc1Pos);
+	objNPC1.GetPosition(npc1Pos2);
+	float ray[3];
+	ray[0] = actorPos[0] - weaponPos[0];
+	ray[1] = actorPos[1] - weaponPos[1];
+	float result = abs(ray[1] * npc1Pos[0] - ray[0] * npc1Pos[1] + weaponPos[1] * actorPos[0] - weaponPos[0] * actorPos[1]) /
+		sqrt(ray[0] * ray[0] + ray[1] * ray[1]);
+
 	// show frame rate
 	static char string[128];
 	if (frame == 0) {
@@ -575,6 +629,18 @@ void RenderIt(int skip)
 	text.Write(fDirS, 20, 50, 255, 255, 0);
 	text.Write(uDirS, 20, 65, 255, 255, 0);
 
+	char actorPosS[256], weaponPosS[256],npc1PosS[256],resultsS[256];
+	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
+	sprintf(weaponPosS, "weapon pos: %8.3f %8.3f %8.3f", weaponPos[0], weaponPos[1], weaponPos[2]);
+	sprintf(npc1PosS, "npc1 pos: %8.3f %8.3f %8.3f", npc1Pos[0], npc1Pos[1], npc1Pos[2]);
+	sprintf(resultsS, "results: %8.3f %8.3f %8.3f %8.3f", ray[0], ray[1], dist2(actorPos,npc1Pos),result);
+
+	text.Write(actorPosS, 20, 80, 255, 255, 0);
+	text.Write(weaponPosS, 20, 100, 255, 255, 0);
+	text.Write(npc1PosS, 20, 120, 255, 255, 0);
+	text.Write(resultsS, 20, 140, 255, 255, 0);
+
+
 	text.End();
 
 	// swap buffer
@@ -594,7 +660,7 @@ void Movement(BYTE code, BOOL4 value)
 	actor.ID(actorID);
 	if (!value) {
 		stack--;
-		if (stack == 0) {
+		if (stack <= 0) {
 			CurPoseID = IdleID;
 			actor.SetCurrentAction(NULL, 0, CurPoseID);
 			actor.Play(START, 0.0f, FALSE, TRUE);
@@ -775,4 +841,58 @@ void ZoomCam(int x, int y)
 		oldXMM = x;
 		oldYMM = y;
 	}
+}
+
+void isNPCHit()
+{
+	FnCharacter actor;
+	FnCharacter npc1;
+	FnCharacter npc2;
+	FnObject ObjNPC1;
+	FnObject ObjNPC2;
+	FnObject actorWeapon;
+	float weaponPos[3],actorPos[3],npc1Pos[3];
+	float ray[3];
+
+	actor.ID(actorID);
+	npc1.ID(npc1ID);
+	npc2.ID(npc2ID);
+	ObjNPC1.ID(npc1.GetBaseObject());
+	ObjNPC2.ID(npc2.GetBaseObject());
+	actorWeapon.ID(actor.GetBoneObject("WeaponDummy03"));
+	actorWeapon.GetPosition(weaponPos);
+	npc1.GetPosition(npc1Pos);
+	actor.GetPosition(actorPos);
+	ray[0] = actorPos[0] - weaponPos[0];
+	ray[1] = actorPos[1] - weaponPos[1];
+	ray[2] = 0;
+
+	CurPoseID = npc1.GetCurrentAction(NULL, 0);
+
+	// distance from npc to actor's attack range
+	float d1 = abs(ray[1] * npc1Pos[0] - ray[0] * npc1Pos[1] + weaponPos[1] * actorPos[0] - weaponPos[0] * actorPos[1]) /
+			  sqrt(ray[0] * ray[0] + ray[1] * ray[1]);
+
+	// disance from npc to actor
+	float d2 = dist2(npc1Pos, actorPos);
+	
+	// distance from npc to actor's weapon
+	float d3 = dist2(npc1Pos, weaponPos);
+	// distance from actor to its' weapon
+	float d4 = dist2(actorPos, weaponPos);
+
+	if (  d1 < 20					  &&
+		  sqrt(d2*d2-d1*d1) < d4	  &&
+		  sqrt(d3*d3-d1*d1) < d4	  )
+	{
+		npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
+		npc1.Play(START, 0.0f,FALSE,TRUE);
+	}
+
+	if (ObjNPC2.HitTest(weaponPos, ray) > 0)
+	{
+		npc2.SetCurrentAction(NULL, 0, npc2_Damage2ID);
+		npc1.Play(START, 0.0f, FALSE, TRUE);
+	}
+
 }
