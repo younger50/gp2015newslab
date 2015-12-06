@@ -13,6 +13,7 @@ Created : 0802, 2012
 Last Updated : 1004, 2015, Kevin C. Wang
 ===============================================================*/
 #include "FlyWin32.h"
+#include "RayTracer.h"
 
 
 VIEWPORTid vID;                 // the major viewport
@@ -83,6 +84,9 @@ void ZoomCam(int, int);
 
 // collision cam mod
 void CameraCollision();
+
+// rayTracer
+RayTracer rayTracer;
 
 // 3D vector cross
 void cross3(float *answer, float *a, float *b){
@@ -285,6 +289,7 @@ void FyMain(int argc, char **argv)
 	// bind timers, frame rate = 30 fps
 	FyBindTimer(0, 30.0f, GameAI, TRUE);
 	FyBindTimer(1, 30.0f, RenderIt, TRUE);
+
 	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
