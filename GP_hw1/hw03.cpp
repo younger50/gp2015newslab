@@ -662,9 +662,9 @@ void Movement(BYTE code, BOOL4 value)
 		}
 	}
 	else {
-		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
-		
 		stack++;
+		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
+
 		CurPoseID = RunID;
 		actor.SetCurrentAction(NULL, 0, CurPoseID);
 		actor.Play(START, 0.0f, FALSE, TRUE);
