@@ -13,6 +13,7 @@ Created : 0802, 2012
 Last Updated : 1004, 2015, Kevin C. Wang
 ===============================================================*/
 #include "FlyWin32.h"
+#include "RayTracer.h"
 
 
 VIEWPORTid vID;                 // the major viewport
@@ -48,6 +49,8 @@ ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID;
 ACTIONid npc1_HeavyAttack1ID;
 ACTIONid npc1_GuardID;
 ACTIONid npc1_Damage1ID, npc1_Damage2ID, npc1_DieID;
+int npc1_HealthPoints = 100;
+bool npc1_AlreadyHit = false;
 
 
 // npc2 = robber
@@ -55,6 +58,8 @@ ACTIONid npc2_IdleID, npc2_RunID,npc2_CurPoseID;
 ACTIONid npc2_NormalAttack1ID, npc2_NormalAttack2ID; 
 ACTIONid npc2_HeavyAttack1ID;
 ACTIONid npc2_Damage1ID, npc2_Damage2ID, npc2_DieID;
+int npc2_HealthPoints = 100;
+bool npc2_AlreadyHit = false;
 
 ROOMid terrainRoomID = FAILED_ID;
 TEXTid textID = FAILED_ID;
@@ -84,6 +89,9 @@ void ZoomCam(int, int);
 
 // collision cam mod
 void CameraCollision();
+
+// rayTracer
+RayTracer rayTracer;
 
 // 3D vector cross
 void cross3(float *answer, float *a, float *b){
@@ -286,6 +294,7 @@ void FyMain(int argc, char **argv)
 	// bind timers, frame rate = 30 fps
 	FyBindTimer(0, 30.0f, GameAI, TRUE);
 	FyBindTimer(1, 30.0f, RenderIt, TRUE);
+
 	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
@@ -338,8 +347,10 @@ void GameAI(int skip)
 			}
 		}
 	}
+
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
-	if (npc1_CurPoseID == npc1_IdleID)
+	if (npc1_CurPoseID == npc1_IdleID  ||
+		npc1_CurPoseID == npc1_DieID	)
 	{
 		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
@@ -350,7 +361,18 @@ void GameAI(int skip)
 			npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
 		}
 	}
-	npc2.Play(LOOP, (float)skip, FALSE, TRUE);
+
+	npc2_CurPoseID = npc2.GetCurrentAction(NULL);
+	if (npc2_CurPoseID == npc2_IdleID || 
+		npc2_CurPoseID == npc2_DieID){
+		npc2.Play(LOOP, (float)skip, FALSE, TRUE);
+	}
+	else if (npc2_CurPoseID == npc2_Damage1ID){
+		if (!npc2.Play(ONCE, (float)skip, FALSE, TRUE))
+		{
+			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
+		}
+	}
 
 	// camera
 	float apos[3], cpos[3]; //actor,camera position
@@ -576,19 +598,11 @@ void RenderIt(int skip)
 	weapon.GetPosition(weaponPos);
 
 	//get npc1's data
-	FnCharacter npc1;
-	FnObject objNPC1;
-	npc1.ID(npc1ID);
-	objNPC1.ID(npc1.GetBaseObject());
+	FnCharacter npc2;
+	npc2.ID(npc2ID);
 
-	float npc1Pos[3],npc1Pos2[3];
-	npc1.GetPosition(npc1Pos);
-	objNPC1.GetPosition(npc1Pos2);
-	float ray[3];
-	ray[0] = actorPos[0] - weaponPos[0];
-	ray[1] = actorPos[1] - weaponPos[1];
-	float result = abs(ray[1] * npc1Pos[0] - ray[0] * npc1Pos[1] + weaponPos[1] * actorPos[0] - weaponPos[0] * actorPos[1]) /
-		sqrt(ray[0] * ray[0] + ray[1] * ray[1]);
+	float npc2Pos[3];
+	npc2.GetPosition(npc2Pos);
 
 	// show frame rate
 	static char string[128];
@@ -623,16 +637,14 @@ void RenderIt(int skip)
 	text.Write(fDirS, 20, 50, 255, 255, 0);
 	text.Write(uDirS, 20, 65, 255, 255, 0);
 
-	char actorPosS[256], weaponPosS[256],npc1PosS[256],resultsS[256];
+	char actorPosS[256], weaponPosS[256], npc1PosS[256];
 	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
 	sprintf(weaponPosS, "weapon pos: %8.3f %8.3f %8.3f", weaponPos[0], weaponPos[1], weaponPos[2]);
-	sprintf(npc1PosS, "npc1 pos: %8.3f %8.3f %8.3f", npc1Pos[0], npc1Pos[1], npc1Pos[2]);
-	sprintf(resultsS, "results: %8.3f %8.3f %8.3f %8.3f", ray[0], ray[1], dist2(actorPos,npc1Pos),result);
+	sprintf(npc1PosS, "npc2 pos: %8.3f %8.3f %8.3f", npc2Pos[0], npc2Pos[1], npc2Pos[2]);
 
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
 	text.Write(npc1PosS, 20, 120, 255, 255, 0);
-	text.Write(resultsS, 20, 140, 255, 255, 0);
 
 
 	text.End();
@@ -674,6 +686,8 @@ void Movement(BYTE code, BOOL4 value)
 void ActorAttack(BYTE code, BOOL4 value)
 {
 	if (!value) return;
+	npc1_AlreadyHit = false;
+	npc2_AlreadyHit = false;
 	FnCharacter actor;
 	actor.ID(actorID);
 	CurPoseID = actor.GetCurrentAction(NULL, 0);
@@ -844,51 +858,78 @@ void isNPCHit()
 	FnCharacter actor;
 	FnCharacter npc1;
 	FnCharacter npc2;
-	FnObject ObjNPC1;
-	FnObject ObjNPC2;
-	FnObject actorWeapon;
-	float weaponPos[3],actorPos[3],npc1Pos[3];
+	FnObject actorWeapon,actorHand;
+	float weaponPos[3], handPos[3], actorPos[3];
+	float npc1Pos[3],npc2Pos[3];
 	float ray[3];
+	float min[3];
+	float max[3];
 
 	actor.ID(actorID);
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
-	ObjNPC1.ID(npc1.GetBaseObject());
-	ObjNPC2.ID(npc2.GetBaseObject());
-	actorWeapon.ID(actor.GetBoneObject("WeaponDummy03"));
+
+	actorWeapon.ID(actor.GetBoneObject("WeaponDummy02"));
 	actorWeapon.GetPosition(weaponPos);
-	npc1.GetPosition(npc1Pos);
+	
+	actorHand.ID(actor.GetBoneObject("Bip01_R_Hand"));
+	actorHand.GetPosition(handPos);
+
 	actor.GetPosition(actorPos);
-	ray[0] = actorPos[0] - weaponPos[0];
-	ray[1] = actorPos[1] - weaponPos[1];
-	ray[2] = 0;
+	npc1.GetPosition(npc1Pos);
+	npc2.GetPosition(npc2Pos);
+
+
+	ray[0] = weaponPos[0] - handPos[0];
+	ray[1] = weaponPos[1] - handPos[1];
+	ray[2] = weaponPos[2] - handPos[2];
+
+	min[0] = npc1Pos[0] - 20;
+	min[1] = npc1Pos[1] - 20;
+	min[2] = npc1Pos[2];
+
+	max[0] = npc1Pos[0] + 20;
+	max[1] = npc1Pos[1] + 20;
+	max[2] = npc1Pos[2] + 70;
 
 	CurPoseID = npc1.GetCurrentAction(NULL, 0);
-
-	// distance from npc to actor's attack range
-	float d1 = abs(ray[1] * npc1Pos[0] - ray[0] * npc1Pos[1] + weaponPos[1] * actorPos[0] - weaponPos[0] * actorPos[1]) /
-			  sqrt(ray[0] * ray[0] + ray[1] * ray[1]);
-
-	// disance from npc to actor
-	float d2 = dist2(npc1Pos, actorPos);
-	
-	// distance from npc to actor's weapon
-	float d3 = dist2(npc1Pos, weaponPos);
-	// distance from actor to its' weapon
-	float d4 = dist2(actorPos, weaponPos);
-
-	if (  d1 < 20					  &&
-		  sqrt(d2*d2-d1*d1) < d4	  &&
-		  sqrt(d3*d3-d1*d1) < d4	  )
+	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !npc1_AlreadyHit && CurPoseID != npc1_DieID )
 	{
-		npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
-		npc1.Play(START, 0.0f,FALSE,TRUE);
+		npc1_AlreadyHit = true;
+		npc1_HealthPoints -= 20;
+		if (npc1_HealthPoints <= 0)
+		{
+			npc1.SetCurrentAction(NULL, 0, npc1_DieID);
+			npc1.Play(START, 0.0f, FALSE, TRUE);
+		}
+		else{
+			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
+			npc1.Play(START, 0.0f, FALSE, TRUE);
+		}
+
 	}
 
-	if (ObjNPC2.HitTest(weaponPos, ray) > 0)
+	min[0] = npc2Pos[0] - 20;
+	min[1] = npc2Pos[1] - 20;
+	min[2] = npc2Pos[2];
+
+	max[0] = npc2Pos[0] + 20;
+	max[1] = npc2Pos[1] + 20;
+	max[2] = npc2Pos[2] + 70;
+
+	CurPoseID = npc2.GetCurrentAction(NULL, 0);
+	if (rayTracer.isInterset(handPos,ray,1,20,min,max) && !npc2_AlreadyHit && CurPoseID != npc2_DieID)
 	{
-		npc2.SetCurrentAction(NULL, 0, npc2_Damage2ID);
-		npc1.Play(START, 0.0f, FALSE, TRUE);
+		npc2_AlreadyHit = true;
+		npc2_HealthPoints -= 20;
+		if (npc2_HealthPoints <= 0){
+			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
+			npc2.Play(START, 0.0f, FALSE, TRUE);
+		}
+		else{
+			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
+			npc2.Play(START, 0.0f, FALSE, TRUE);
+		}
 	}
 
 }
