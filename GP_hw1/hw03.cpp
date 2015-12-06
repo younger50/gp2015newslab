@@ -20,6 +20,7 @@ SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
+int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
 // actor = lyubu
@@ -306,14 +307,11 @@ void GameAI(int skip)
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
 	CurPoseID = actor.GetCurrentAction(NULL);
-	if (CurPoseID == IdleID)
+	if (CurPoseID == IdleID || CurPoseID == RunID)
 	{
 		actor.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
-	else if (CurPoseID == RunID)
-	{
-		actor.Play(LOOP, (float)skip, FALSE, TRUE);
-	}
+	
 	else if (CurPoseID == NormalAttack1ID || 
 			 CurPoseID == NormalAttack2ID || 
 			 CurPoseID == NormalAttack3ID ||
@@ -330,17 +328,22 @@ void GameAI(int skip)
 				actor.SetCurrentAction(NULL, 0, NextAttackID);
 				isCombo = false;
 			}
-			else{
-				actor.SetCurrentAction(NULL, 0, IdleID);
+			else{// recovery the pervious state 
+				if (stack <= 0){
+					actor.SetCurrentAction(NULL, 0, IdleID);
+				}
+				else{
+					actor.SetCurrentAction(NULL, 0, RunID);
+				}
 			}
 		}
 	}
-	CurPoseID = npc1.GetCurrentAction(NULL, 0);
-	if (CurPoseID == npc1_IdleID)
+	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
+	if (npc1_CurPoseID == npc1_IdleID)
 	{
 		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
-	else if (CurPoseID == npc1_Damage1ID)
+	else if (npc1_CurPoseID == npc1_Damage1ID)
 	{
 		if (!npc1.Play(ONCE, (float)skip, FALSE, TRUE))
 		{
@@ -361,111 +364,102 @@ void GameAI(int skip)
 	camera.GetDirection(cfDir, cuDir);
 
 	// front
-	if (FyCheckHotKeyStatus(FY_UP)) {
-		// get new actor face dir
-		fDir[0] = cfDir[0];
-		fDir[1] = cfDir[1];
-		fDir[2] = 0;
-		uDir[0] = 0;
-		uDir[1] = 0;
-		uDir[2] = 1;
-		actor.SetDirection(fDir, uDir);
-		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-		// get actor position & direction
-		actor.GetPosition(apos);
-		actor.GetDirection(fDir, uDir);
-		// calculate camera position & direction
-		// camera pos
-		cpos[0] = apos[0] - fDir[0] * distance;
-		cpos[1] = apos[1] - fDir[1] * distance;
-		cpos[2] = apos[2] + uDir[2] * height;
-		// camera set
-		camera.SetPosition(cpos);
-		// collision cam modification
-		CameraCollision();
-	}
-	// left circle
-	else if (FyCheckHotKeyStatus(FY_LEFT)) {
-		// set actor face left then move forward
-		cross3(fDir, cuDir, cfDir);
-		uDir[0] = 0;
-		uDir[1] = 0;
-		uDir[2] = 1;
-		actor.SetDirection(fDir, uDir);
-		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-		// camera rotate
-		// get actor position & direction
-		actor.GetPosition(apos);
-		actor.GetDirection(fDir, uDir);
-		// calculate camera position & direction
-		// camera face
-		cfDir[0] = apos[0] - cpos[0];
-		cfDir[1] = apos[1] - cpos[1];
-		cfDir[2] = apos[2] - cpos[2] + height / 2;
-		// camera up
-		cross3(cuDir, cfDir, fDir);
-		// camera set
-		camera.SetDirection(cfDir, cuDir);
-	}
-	// right circle
-	else if (FyCheckHotKeyStatus(FY_RIGHT)) {
-		// set actor face right then move forward
-		cross3(fDir, cfDir, cuDir);
-		uDir[0] = 0;
-		uDir[1] = 0;
-		uDir[2] = 1;
-		actor.SetDirection(fDir, uDir);
-		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-		// camera rotate
-		// get actor position & direction
-		actor.GetPosition(apos);
-		actor.GetDirection(fDir, uDir);
-		// calculate camera position & direction
-		// camera face
-		cfDir[0] = apos[0] - cpos[0];
-		cfDir[1] = apos[1] - cpos[1];
-		cfDir[2] = apos[2] - cpos[2] + height / 2;
-		// camera up
-		cross3(cuDir, fDir, cfDir);
-		// camera set
-		camera.SetDirection(cfDir, cuDir);
-	}
-	// back
-	else if (FyCheckHotKeyStatus(FY_DOWN)) {
-		// get new actor face dir
-		fDir[0] = -cfDir[0];
-		fDir[1] = -cfDir[1];
-		fDir[2] = 0;
-		uDir[0] = 0;
-		uDir[1] = 0;
-		uDir[2] = 1;
-		actor.SetDirection(fDir, uDir);
-		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-		// get actor position & direction
-		actor.GetPosition(apos);
-		actor.GetDirection(fDir, uDir);
-		// calculate camera position & direction
-		// camera pos
-		cpos[0] = apos[0] + fDir[0] * distance;
-		cpos[1] = apos[1] + fDir[1] * distance;
-		cpos[2] = apos[2] + uDir[2] * height;
-		// camera set
-		camera.SetPosition(cpos);
-		// collision cam modification
-		CameraCollision();
-	}
+	if (CurPoseID == RunID || CurPoseID == IdleID){//make actor's attack and movement is independent action
+		if (FyCheckHotKeyStatus(FY_UP)) {
+			// get new actor face dir
+			fDir[0] = cfDir[0];
+			fDir[1] = cfDir[1];
+			fDir[2] = 0;
+			uDir[0] = 0;
+			uDir[1] = 0;
+			uDir[2] = 1;
+			actor.SetDirection(fDir, uDir);
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			// get actor position & direction
+			actor.GetPosition(apos);
+			actor.GetDirection(fDir, uDir);
+			// calculate camera position & direction
+			// camera pos
+			cpos[0] = apos[0] - fDir[0] * distance;
+			cpos[1] = apos[1] - fDir[1] * distance;
+			cpos[2] = apos[2] + uDir[2] * height;
+			// camera set
+			camera.SetPosition(cpos);
+			// collision cam modification
+			CameraCollision();
+		}
+		// left circle
+		else if (FyCheckHotKeyStatus(FY_LEFT)) {
+			// set actor face left then move forward
+			cross3(fDir, cuDir, cfDir);
+			uDir[0] = 0;
+			uDir[1] = 0;
+			uDir[2] = 1;
+			actor.SetDirection(fDir, uDir);
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			// camera rotate
+			// get actor position & direction
+			actor.GetPosition(apos);
+			actor.GetDirection(fDir, uDir);
+			// calculate camera position & direction
+			// camera face
+			cfDir[0] = apos[0] - cpos[0];
+			cfDir[1] = apos[1] - cpos[1];
+			cfDir[2] = apos[2] - cpos[2] + height / 2;
+			// camera up
+			cross3(cuDir, cfDir, fDir);
+			// camera set
+			camera.SetDirection(cfDir, cuDir);
+		}
+		// right circle
+		else if (FyCheckHotKeyStatus(FY_RIGHT)) {
+			// set actor face right then move forward
+			cross3(fDir, cfDir, cuDir);
+			uDir[0] = 0;
+			uDir[1] = 0;
+			uDir[2] = 1;
+			actor.SetDirection(fDir, uDir);
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			// camera rotate
+			// get actor position & direction
+			actor.GetPosition(apos);
+			actor.GetDirection(fDir, uDir);
+			// calculate camera position & direction
+			// camera face
+			cfDir[0] = apos[0] - cpos[0];
+			cfDir[1] = apos[1] - cpos[1];
+			cfDir[2] = apos[2] - cpos[2] + height / 2;
+			// camera up
+			cross3(cuDir, fDir, cfDir);
+			// camera set
+			camera.SetDirection(cfDir, cuDir);
+		}
+		// back
+		else if (FyCheckHotKeyStatus(FY_DOWN)) {
+			// get new actor face dir
+			fDir[0] = -cfDir[0];
+			fDir[1] = -cfDir[1];
+			fDir[2] = 0;
+			uDir[0] = 0;
+			uDir[1] = 0;
+			uDir[2] = 1;
+			actor.SetDirection(fDir, uDir);
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			// get actor position & direction
+			actor.GetPosition(apos);
+			actor.GetDirection(fDir, uDir);
+			// calculate camera position & direction
+			// camera pos
+			cpos[0] = apos[0] + fDir[0] * distance;
+			cpos[1] = apos[1] + fDir[1] * distance;
+			cpos[2] = apos[2] + uDir[2] * height;
+			// camera set
+			camera.SetPosition(cpos);
+			// collision cam modification
+			CameraCollision();
+		}
 
-	if (actorAttacking == 1){
-		actorAttackFrame++;
-		/*if (actorAttackFrame > 30){
-			actorAttacking = 0;
-			actor.ID(actorID);
-			CurPoseID = IdleID;
-			actor.SetCurrentAction(NULL, 0, CurPoseID);
-			actor.Play(START, 0.0f, FALSE, TRUE);
-		}*/
 	}
-
 }
 
 //
@@ -650,7 +644,7 @@ void RenderIt(int skip)
 /*------------------
 movement control
 -------------------*/
-int stack = 0; // keep track of multi key press
+
 void Movement(BYTE code, BOOL4 value)
 {
 	//===============================
@@ -660,6 +654,7 @@ void Movement(BYTE code, BOOL4 value)
 	actor.ID(actorID);
 	if (!value) {
 		stack--;
+		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
 		if (stack <= 0) {
 			CurPoseID = IdleID;
 			actor.SetCurrentAction(NULL, 0, CurPoseID);
@@ -667,7 +662,8 @@ void Movement(BYTE code, BOOL4 value)
 		}
 	}
 	else {
-		// (code == FY_UP || code == FY_LEFT || code == FY_RIGHT) 
+		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
+		
 		stack++;
 		CurPoseID = RunID;
 		actor.SetCurrentAction(NULL, 0, CurPoseID);
