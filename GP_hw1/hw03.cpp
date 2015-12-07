@@ -117,7 +117,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("NTU@2015 Homework #02 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -637,14 +637,14 @@ void RenderIt(int skip)
 	text.Write(fDirS, 20, 50, 255, 255, 0);
 	text.Write(uDirS, 20, 65, 255, 255, 0);
 
-	char actorPosS[256], weaponPosS[256], npc1PosS[256];
+	char actorPosS[256], weaponPosS[256], npctatus[256];
 	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
 	sprintf(weaponPosS, "weapon pos: %8.3f %8.3f %8.3f", weaponPos[0], weaponPos[1], weaponPos[2]);
-	sprintf(npc1PosS, "npc2 pos: %8.3f %8.3f %8.3f", npc2Pos[0], npc2Pos[1], npc2Pos[2]);
+	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d ", npc1_HealthPoints, npc2_HealthPoints);
 
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
-	text.Write(npc1PosS, 20, 120, 255, 255, 0);
+	text.Write(npctatus, 20, 120, 255, 255, 0);
 
 
 	text.End();
