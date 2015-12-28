@@ -45,7 +45,7 @@ void isNPCHit();
 
 // npc1 = Donzo
 ACTIONid npc1_IdleID, npc1_RunID, npc1_CurPoseID;
-ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID; 
+ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID, npc1_NormalAttack3ID;
 ACTIONid npc1_HeavyAttack1ID;
 ACTIONid npc1_GuardID;
 ACTIONid npc1_Damage1ID, npc1_Damage2ID, npc1_DieID;
@@ -159,6 +159,12 @@ void FyMain(int argc, char **argv)
 	actorID = scene.LoadCharacter("Lyubu2");
 	npc1ID = scene.LoadCharacter("Donzo2");
 	npc2ID = scene.LoadCharacter("Robber02");
+	/*
+	FySetModelPath("Data\\NTU6\\NPCs");
+	FySetTexturePath("Data\\NTU6\\NPCs");
+	FySetCharacterPath("Data\\NTU6\\NPCs");
+	npc2ID = scene.LoadCharacter("AMA001");
+	*/
 
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
@@ -214,11 +220,12 @@ void FyMain(int argc, char **argv)
 	npc1_RunID = npc1.GetBodyAction(NULL, "Run");
 	npc1_NormalAttack1ID = npc1.GetBodyAction(NULL, "AttackL1");
 	npc1_NormalAttack2ID = npc1.GetBodyAction(NULL, "AttackL2");
-	npc1_HeavyAttack1ID = npc1.GetBodyAction(NULL, "Defence");
-	npc1_GuardID = npc1.GetBodyAction(NULL, "HeavyDamage");
+	npc1_NormalAttack3ID = npc1.GetBodyAction(NULL, "AttackH");
+	npc1_HeavyAttack1ID = npc1.GetBodyAction(NULL, "HeavyAttack");
+	npc1_GuardID = npc1.GetBodyAction(NULL, "Defence");
 	npc1_Damage1ID = npc1.GetBodyAction(NULL, "DamageL");
 	npc1_Damage2ID = npc1.GetBodyAction(NULL, "DamageH");
-	npc1_DieID = npc1.GetBodyAction(NULL, "HeavyDamage");
+	npc1_DieID = npc1.GetBodyAction(NULL, "Die");
 
 	npc2_IdleID = npc2.GetBodyAction(NULL, "CombatIdle");
 	npc2_RunID = npc2.GetBodyAction(NULL, "Run");
@@ -227,7 +234,7 @@ void FyMain(int argc, char **argv)
 	npc2_HeavyAttack1ID = npc2.GetBodyAction(NULL, "HeavyAttack1");
 	npc2_Damage1ID = npc2.GetBodyAction(NULL, "Damage1");
 	npc2_Damage2ID = npc2.GetBodyAction(NULL, "Damage2");
-	npc2_DieID = npc2.GetBodyAction(NULL, "Die");
+	npc2_DieID = npc2.GetBodyAction(NULL, "Dead");
 
 	// set the character to idle action
 	CurPoseID = IdleID;
@@ -348,11 +355,15 @@ void GameAI(int skip)
 		}
 	}
 
+
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
-	if (npc1_CurPoseID == npc1_IdleID  ||
-		npc1_CurPoseID == npc1_DieID	)
+	if (npc1_CurPoseID == npc1_IdleID)
 	{
 		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
+	}
+	else if (npc1_CurPoseID == npc1_DieID)
+	{
+		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
 	}
 	else if (npc1_CurPoseID == npc1_Damage1ID)
 	{
@@ -363,9 +374,13 @@ void GameAI(int skip)
 	}
 
 	npc2_CurPoseID = npc2.GetCurrentAction(NULL);
-	if (npc2_CurPoseID == npc2_IdleID || 
-		npc2_CurPoseID == npc2_DieID){
+	if (npc2_CurPoseID == npc2_IdleID)
+	{
 		npc2.Play(LOOP, (float)skip, FALSE, TRUE);
+	}
+	else if (npc2_CurPoseID == npc2_DieID)
+	{
+		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
 	}
 	else if (npc2_CurPoseID == npc2_Damage1ID){
 		if (!npc2.Play(ONCE, (float)skip, FALSE, TRUE))
@@ -920,6 +935,7 @@ void isNPCHit()
 		if (npc1_HealthPoints <= 0)
 		{
 			npc1.SetCurrentAction(NULL, 0, npc1_DieID);
+			/*
 			npc1.Play(START, 0.0f, FALSE, TRUE);
 			// change position to lie down
 			float fDir[3], uDir[3]; //actor face, up, right dir;
@@ -927,10 +943,11 @@ void isNPCHit()
 			uDir[0] = -fDir[0], uDir[1] = -fDir[1], uDir[2] = 0;
 			fDir[0] = 0, fDir[1] = 0, fDir[2] = 1;
 			npc1.SetDirection(fDir,uDir);
+			*/
 		}
 		else{
 			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
-			npc1.Play(START, 0.0f, FALSE, TRUE);
+			//npc1.Play(START, 0.0f, FALSE, TRUE);
 		}
 
 	}
@@ -950,6 +967,7 @@ void isNPCHit()
 		npc2_HealthPoints -= 20;
 		if (npc2_HealthPoints <= 0){
 			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
+			/*
 			npc2.Play(START, 0.0f, FALSE, TRUE);
 			// change position to lie down
 			float fDir[3], uDir[3]; //actor face, up, right dir;
@@ -957,10 +975,11 @@ void isNPCHit()
 			uDir[0] = -fDir[0], uDir[1] = -fDir[1], uDir[2] = 0;
 			fDir[0] = 0, fDir[1] = 0, fDir[2] = 1;
 			npc2.SetDirection(fDir, uDir);
+			*/
 		}
 		else{
 			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
-			npc2.Play(START, 0.0f, FALSE, TRUE);
+			//npc2.Play(START, 0.0f, FALSE, TRUE);
 		}
 	}
 
