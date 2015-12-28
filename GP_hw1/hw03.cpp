@@ -373,8 +373,27 @@ void GameAI(int skip)
 			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
 		}
 	}
+	
+	
+	// basic version 3 person view move
+	if (FyCheckHotKeyStatus(FY_UP)) {
+		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+	}
 
-	// camera
+	if (FyCheckHotKeyStatus(FY_LEFT)) {
+		actor.TurnRight(-rotate);
+	}
+
+	if (FyCheckHotKeyStatus(FY_RIGHT)) {
+		actor.TurnRight(rotate);
+	}
+	
+	Camera3PersonView(skip);
+	
+
+	/*
+	// hw 2 veriosn special move
+	// camera with move
 	float apos[3], cpos[3]; //actor,camera position
 	float fDir[3], uDir[3]; //actor face, up, right dir;
 	float rDir[3];
@@ -384,7 +403,7 @@ void GameAI(int skip)
 	camera.ID(cID);
 	camera.GetPosition(cpos);
 	camera.GetDirection(cfDir, cuDir);
-
+	
 	// front
 	if (CurPoseID == RunID || CurPoseID == IdleID){//make actor's attack and movement is independent action
 		if (FyCheckHotKeyStatus(FY_UP)) {
@@ -480,8 +499,9 @@ void GameAI(int skip)
 			// collision cam modification
 			CameraCollision();
 		}
-
+		
 	}
+	*/
 }
 
 //
