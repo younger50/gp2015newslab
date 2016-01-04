@@ -970,19 +970,9 @@ void isNPCHit()
 		if (npc1_HealthPoints <= 0)
 		{
 			npc1.SetCurrentAction(NULL, 0, npc1_DieID);
-			/*
-			npc1.Play(START, 0.0f, FALSE, TRUE);
-			// change position to lie down
-			float fDir[3], uDir[3]; //actor face, up, right dir;
-			npc1.GetDirection(fDir, uDir);
-			uDir[0] = -fDir[0], uDir[1] = -fDir[1], uDir[2] = 0;
-			fDir[0] = 0, fDir[1] = 0, fDir[2] = 1;
-			npc1.SetDirection(fDir,uDir);
-			*/
 		}
 		else{
 			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
-			//npc1.Play(START, 0.0f, FALSE, TRUE);
 		}
 
 	}
@@ -1002,19 +992,9 @@ void isNPCHit()
 		npc2_HealthPoints -= 20;
 		if (npc2_HealthPoints <= 0){
 			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
-			/*
-			npc2.Play(START, 0.0f, FALSE, TRUE);
-			// change position to lie down
-			float fDir[3], uDir[3]; //actor face, up, right dir;
-			npc2.GetDirection(fDir, uDir);
-			uDir[0] = -fDir[0], uDir[1] = -fDir[1], uDir[2] = 0;
-			fDir[0] = 0, fDir[1] = 0, fDir[2] = 1;
-			npc2.SetDirection(fDir, uDir);
-			*/
 		}
 		else{
 			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
-			//npc2.Play(START, 0.0f, FALSE, TRUE);
 		}
 	}
 
