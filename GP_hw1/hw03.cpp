@@ -389,24 +389,24 @@ void GameAI(int skip)
 		}
 	}
 	
-	
 	// basic version 3 person view move
-	if (FyCheckHotKeyStatus(FY_UP)) {
-		actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-	}
+	if (CurPoseID == RunID || CurPoseID == IdleID){
+		if (FyCheckHotKeyStatus(FY_UP)) {
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+		}
 
-	if (FyCheckHotKeyStatus(FY_LEFT)) {
-		actor.TurnRight(-rotate);
-	}
+		if (FyCheckHotKeyStatus(FY_LEFT)) {
+			actor.TurnRight(-rotate);
+		}
 
-	if (FyCheckHotKeyStatus(FY_RIGHT)) {
-		actor.TurnRight(rotate);
-	}
+		if (FyCheckHotKeyStatus(FY_RIGHT)) {
+			actor.TurnRight(rotate);
+		}
 	
-	if (FyCheckHotKeyStatus(FY_DOWN)) {
-		actor.MoveForward(-speed/2, TRUE, FALSE, 0.0f, TRUE);
+		if (FyCheckHotKeyStatus(FY_DOWN)) {
+			actor.MoveForward(-speed/2, TRUE, FALSE, 0.0f, TRUE);
+		}
 	}
-
 	Camera3PersonView(skip);
 	CameraCollision();
 
