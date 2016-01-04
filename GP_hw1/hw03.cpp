@@ -28,8 +28,8 @@ int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
 //hp
-OBJECTid npc1_hpid, npc2_hpid;
-GEOMETRYid npc1_hpboardid,npc2_hpboardid;
+OBJECTid actor_hpid,npc1_hpid, npc2_hpid;
+GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
 
 
 // actor = lyubu
@@ -157,6 +157,15 @@ void FyMain(int argc, char **argv)
 	terrain.Show(FALSE);
 
 
+	//lyubu's hp
+
+	float actor_hpsize[2] = { 50, 5 };
+	FnObject actor_hpobj;
+	actor_hpid = scene.CreateObject(OBJECT);
+	actor_hpobj.ID(actor_hpid);
+	actor_hpobj.Show(TRUE);
+	actor_hpboardid = actor_hpobj.Billboard(NULL, actor_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
+
 	//dozno's hp
 	
 	float npc1_hpsize[2] = { 50, 5 };
@@ -171,7 +180,7 @@ void FyMain(int argc, char **argv)
 	npc2_hpid = scene.CreateObject(OBJECT);
 	npc2_hpobj.ID(npc2_hpid);
 	npc2_hpobj.Show(TRUE);
-	npc2_hpboardid = npc2_hpobj.Billboard(NULL, npc2_hpsize, "Data\\NTU6\\NPCs\\80hp", 0);
+	npc2_hpboardid = npc2_hpobj.Billboard(NULL, npc2_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
 	
 	
 	// set terrain environment
@@ -650,10 +659,12 @@ void RenderIt(int skip)
 	text.End();
 
 
-
-	//float color[3] = {255.0,255.0,255.0};
-	float color[3] = { 0, 0, 0 };
-	float size[2] = { 100, 100};
+	// the donzo hpID
+	FnObject actor_hpobj;
+	actor_hpobj.ID(actor_hpid);
+	actorPos[2] = actorPos[2] + 100;
+	actor_hpobj.SetPosition(actorPos);
+	
 	
 	// the donzo hpID
 	FnObject npc1_hpobj;
@@ -923,7 +934,8 @@ void isNPCHit()
 	{
 		npc1_AlreadyHit = true;
 		npc1_HealthPoints -= 20;
-		//hp 
+
+		//hp 's picture is shorter
 		npc1_hpsize[0] = npc1_hpsize[0] * npc1_HealthPoints / 100;
 		npc1_hpboard.SetPositionSize(NULL, npc1_hpsize);
 
