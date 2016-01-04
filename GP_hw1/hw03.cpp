@@ -28,6 +28,8 @@ CHARACTERid npc1ID, npc2ID;		// the npc character
 
 //hp
 OBJECTid hpid;
+GEOMETRYid hpboardid;
+
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -156,13 +158,14 @@ void FyMain(int argc, char **argv)
 
 	//hp
 	
-	float size[2] = { 50, 5 };
+	float hpsize[2] = { 50, 5 };
 	FnObject hpobj;
+	FnBillboard hpboard;
+
 	hpid = scene.CreateObject(OBJECT);
 	hpobj.ID(hpid);
 	hpobj.Show(TRUE);
-	hpobj.Billboard(NULL, size, "Data\\NTU6\\NPCs\\hp", 0);
-	
+	hpboardid = hpobj.Billboard(NULL, hpsize, "Data\\NTU6\\NPCs\\hp", 0);
 	
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
@@ -902,11 +905,25 @@ void isNPCHit()
 	max[1] = npc2Pos[1] + 20;
 	max[2] = npc2Pos[2] + 70;
 
+
+	FnBillboard hpboard;
+	hpboard.ID(hpboardid);
+	float hpsize[2] = { 50, 5 };
+
+
 	CurPoseID = npc2.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos,ray,1,20,min,max) && !npc2_AlreadyHit && CurPoseID != npc2_DieID)
 	{
 		npc2_AlreadyHit = true;
 		npc2_HealthPoints -= 20;
+
+		//hp 
+		hpsize[0] = hpsize[0] *npc2_HealthPoints/100;
+		
+		
+		hpboard.SetPositionSize( NULL, hpsize);
+		//hpboard.ReplaceMaterial
+		
 		if (npc2_HealthPoints <= 0){
 			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
 		}
