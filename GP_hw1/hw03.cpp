@@ -28,8 +28,8 @@ int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
 //hp
-OBJECTid hpid;
-GEOMETRYid hpboardid;
+OBJECTid npc1_hpid, npc2_hpid;
+GEOMETRYid npc1_hpboardid,npc2_hpboardid;
 
 
 // actor = lyubu
@@ -157,16 +157,22 @@ void FyMain(int argc, char **argv)
 	terrain.Show(FALSE);
 
 
-	//hp
+	//dozno's hp
 	
-	float hpsize[2] = { 50, 5 };
-	FnObject hpobj;
-	FnBillboard hpboard;
-
-	hpid = scene.CreateObject(OBJECT);
-	hpobj.ID(hpid);
-	hpobj.Show(TRUE);
-	hpboardid = hpobj.Billboard(NULL, hpsize, "Data\\NTU6\\NPCs\\hp", 0);
+	float npc1_hpsize[2] = { 50, 5 };
+	FnObject npc1_hpobj, npc2_hpobj;
+	npc1_hpid = scene.CreateObject(OBJECT);
+	npc1_hpobj.ID(npc1_hpid);
+	npc1_hpobj.Show(TRUE);
+	npc1_hpboardid = npc1_hpobj.Billboard(NULL, npc1_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
+	
+	//robber's hp
+	float npc2_hpsize[2] = { 50, 5 };
+	npc2_hpid = scene.CreateObject(OBJECT);
+	npc2_hpobj.ID(npc2_hpid);
+	npc2_hpobj.Show(TRUE);
+	npc2_hpboardid = npc2_hpobj.Billboard(NULL, npc2_hpsize, "Data\\NTU6\\NPCs\\80hp", 0);
+	
 	
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
@@ -581,8 +587,17 @@ void RenderIt(int skip)
 	weapon.GetPosition(weaponPos);
 
 	//get npc1's data
+	FnCharacter npc1;
+	npc1.ID(npc1ID);
+
+
+	float npc1Pos[3];
+	npc1.GetPosition(npc1Pos);
+
+	//get npc2's data
 	FnCharacter npc2;
 	npc2.ID(npc2ID);
+
 
 	float npc2Pos[3];
 	npc2.GetPosition(npc2Pos);
@@ -640,13 +655,19 @@ void RenderIt(int skip)
 	float color[3] = { 0, 0, 0 };
 	float size[2] = { 100, 100};
 	
-	
+	// the donzo hpID
+	FnObject npc1_hpobj;
+	npc1_hpobj.ID(npc1_hpid);
+	npc1Pos[2] = npc1Pos[2] + 100;
+	npc1_hpobj.SetPosition(npc1Pos);
+
 	// the Robber hpID
 	
-	FnObject hpobj;
-	hpobj.ID(hpid);
+	FnObject npc2_hpobj;
+	npc2_hpobj.ID(npc2_hpid);
 	npc2Pos[2]=npc2Pos[2] + 70;
-	hpobj.SetPosition(npc2Pos);
+	npc2_hpobj.SetPosition(npc2Pos);
+	
 	
 
 	// swap buffer
@@ -893,11 +914,19 @@ void isNPCHit()
 	max[1] = npc1Pos[1] + 20;
 	max[2] = npc1Pos[2] + 70;
 
+	FnBillboard npc1_hpboard;
+	npc1_hpboard.ID(npc1_hpboardid);
+	float npc1_hpsize[2] = { 50, 5 };
+
 	CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !npc1_AlreadyHit && CurPoseID != npc1_DieID )
 	{
 		npc1_AlreadyHit = true;
 		npc1_HealthPoints -= 20;
+		//hp 
+		npc1_hpsize[0] = npc1_hpsize[0] * npc1_HealthPoints / 100;
+		npc1_hpboard.SetPositionSize(NULL, npc1_hpsize);
+
 		if (npc1_HealthPoints <= 0)
 		{
 			npc1.SetCurrentAction(NULL, 0, npc1_DieID);
@@ -917,9 +946,9 @@ void isNPCHit()
 	max[2] = npc2Pos[2] + 70;
 
 
-	FnBillboard hpboard;
-	hpboard.ID(hpboardid);
-	float hpsize[2] = { 50, 5 };
+	FnBillboard npc2_hpboard;
+	npc2_hpboard.ID(npc2_hpboardid);
+	float npc2_hpsize[2] = { 50, 5 };
 
 
 	CurPoseID = npc2.GetCurrentAction(NULL, 0);
@@ -929,11 +958,10 @@ void isNPCHit()
 		npc2_HealthPoints -= 20;
 
 		//hp 
-		hpsize[0] = hpsize[0] *npc2_HealthPoints/100;
 		
+		npc2_hpsize[0] = npc2_hpsize[0] * npc2_HealthPoints / 100;
+		npc2_hpboard.SetPositionSize(NULL, npc2_hpsize);
 		
-		hpboard.SetPositionSize( NULL, hpsize);
-		//hpboard.ReplaceMaterial
 		
 		if (npc2_HealthPoints <= 0){
 			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
@@ -944,3 +972,4 @@ void isNPCHit()
 	}
 
 }
+
