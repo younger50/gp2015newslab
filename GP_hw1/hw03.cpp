@@ -434,8 +434,12 @@ void GameAI(int skip)
 		actor.TurnRight(rotate);
 	}
 	
+	if (FyCheckHotKeyStatus(FY_DOWN)) {
+		actor.MoveForward(-speed/2, TRUE, FALSE, 0.0f, TRUE);
+	}
+
 	Camera3PersonView(skip);
-	
+	CameraCollision();
 
 	/*
 	// hw 2 veriosn special move
