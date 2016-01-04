@@ -14,6 +14,8 @@ Last Updated : 1004, 2015, Kevin C. Wang
 ===============================================================*/
 #include "FlyWin32.h"
 #include "RayTracer.h"
+#include <vector>
+using namespace std;
 
 
 VIEWPORTid vID;                 // the major viewport
@@ -52,7 +54,10 @@ ACTIONid npc1_HeavyAttack1ID;
 ACTIONid npc1_GuardID;
 ACTIONid npc1_Damage1ID, npc1_Damage2ID, npc1_DieID;
 int npc1_HealthPoints = 100;
+float npc1_attackrate = 0.5f;
+int npc1_attack_counter = 0;
 bool npc1_AlreadyHit = false;
+bool npc1_running = false,npc1_canAttack = false;
 
 
 // npc2 = robber
@@ -61,7 +66,10 @@ ACTIONid npc2_NormalAttack1ID, npc2_NormalAttack2ID;
 ACTIONid npc2_HeavyAttack1ID;
 ACTIONid npc2_Damage1ID, npc2_Damage2ID, npc2_DieID;
 int npc2_HealthPoints = 100;
+float npc2_attackrate = 0.5f;
+int npc2_attack_counter = 0;
 bool npc2_AlreadyHit = false;
+bool npc2_running = false, npc2_canAttack = false;
 
 ROOMid terrainRoomID = FAILED_ID;
 TEXTid textID = FAILED_ID;
@@ -75,6 +83,19 @@ void QuitGame(BYTE, BOOL4);
 void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
 
+// npc movement
+#define OPEN 0
+#define CLOSED 1
+struct Node{
+	struct Node *parent;
+	float pos[3];
+	float gn;	// distance between Start and this node(step distance)
+	float hn;	// distance between Start and Goal
+	float fn;	// gn + hn
+	bool status;
+};
+Node* NPCmovement(CHARACTERid npcID);
+vector<Node*> open, close, nodelist;
 
 // timer callbacks
 void GameAI(int);
@@ -383,16 +404,137 @@ void GameAI(int skip)
 		}
 	}
 
+	
+	// npc AI
+	if (npc1_HealthPoints != 0){
+		// movement
+		float curFDir[3];
+		float pos[3],fDir[3],uDir[3],apos[3];
+		npc1.GetPosition(pos);
+		npc1.GetDirection(curFDir, NULL);
+		actor.GetPosition(apos);
+		vector<Node*>::iterator it;
+		Node *Goal = NPCmovement(npc1ID);
+		Node *temp, *pre;
+		temp = Goal;
+		pre = Goal->parent;
+		while (true){
+			if (pre->pos[0] == pos[0] && pre->pos[1] == pos[1] && pre->pos[2] == pos[2]){
+				if (temp->pos[0] != pos[0] || temp->pos[1] != pos[1] || temp->pos[2] != pos[2]){
+					fDir[0] = temp->pos[0] - pos[0]; fDir[1] = temp->pos[1] - pos[1]; fDir[2] = temp->pos[2] - pos[2];
+					fDir[0] = 0.8*curFDir[0] + 0.2*fDir[0]; fDir[1] = 0.8*curFDir[1] + 0.2*fDir[1]; fDir[2] = 0.8*curFDir[2] + 0.2*fDir[2];
+					uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
+					npc1.SetPosition(temp->pos);
+					npc1.SetDirection(fDir, uDir);
+					npc1_running = true;
+					npc1_canAttack = false;
+				}
+				else{
+					fDir[0] = apos[0] - pos[0]; fDir[1] = apos[1] - pos[1]; fDir[2] = apos[2] - pos[2];
+					uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
+					npc1.SetDirection(fDir, uDir);
+					npc1_running = false;
+					npc1_canAttack = true;
+				}
+				for (it = nodelist.begin(); it != nodelist.begin() + 1; it++){
+					free((*it));
+				}
+				open.clear();
+				close.clear();
+				nodelist.clear();
+
+				break;
+			}
+			else{
+				temp = pre;
+				pre = pre->parent;
+			}
+		}
+		//attack cool down
+		npc1_attack_counter++;
+		npc1_attack_counter %= (int)( 30 * npc1_attackrate);
+	}
+	if (npc2_HealthPoints != 0){
+		// movement
+		float curFDir[3];
+		float pos[3], fDir[3], uDir[3], apos[3];
+		npc2.GetPosition(pos);
+		npc2.GetDirection(curFDir, NULL);
+		actor.GetPosition(apos);
+		vector<Node*>::iterator it;
+		Node *Goal = NPCmovement(npc2ID);
+		Node *temp, *pre;
+		temp = Goal;
+		pre = Goal->parent;
+		while (true){
+			if (pre->pos[0] == pos[0] && pre->pos[1] == pos[1] && pre->pos[2] == pos[2]){
+				if (temp->pos[0] != pos[0] || temp->pos[1] != pos[1] || temp->pos[2] != pos[2]){
+					fDir[0] = temp->pos[0] - pos[0]; fDir[1] = temp->pos[1] - pos[1]; fDir[2] = temp->pos[2] - pos[2];
+					fDir[0] = 0.8*curFDir[0] + 0.2*fDir[0]; fDir[1] = 0.8*curFDir[1] + 0.2*fDir[1]; fDir[2] = 0.8*curFDir[2] + 0.2*fDir[2];
+					uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
+					npc2.SetPosition(temp->pos);
+					npc2.SetDirection(fDir, uDir);
+					npc2_running = true;
+					npc2_canAttack = false;
+				}
+				else{
+					fDir[0] = apos[0] - pos[0]; fDir[1] = apos[1] - pos[1]; fDir[2] = apos[2] - pos[2];
+					uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
+					npc2.SetDirection(fDir, uDir);
+					npc2_running = false;
+					npc2_canAttack = true;
+				}
+				for (it = nodelist.begin(); it != nodelist.begin() + 1; it++){
+					free((*it));
+				}
+				open.clear();
+				close.clear();
+				nodelist.clear();
+
+				break;
+			}
+			else{
+				temp = pre;
+				pre = pre->parent;
+			}
+		}
+		//attack cool down
+		npc2_attack_counter++;
+		npc2_attack_counter %= (int)(30 * npc2_attackrate);
+	}
 
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (npc1_CurPoseID == npc1_IdleID)
 	{
 		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
+		if (npc1_running){
+			npc1.SetCurrentAction(NULL, 0, npc1_RunID);
+		}
+		if (npc1_canAttack){
+			if (npc1_attack_counter == 0){
+				npc1.SetCurrentAction(NULL, 0, npc1_NormalAttack1ID);
+			}
+		}
+	}
+	else if (npc1_CurPoseID == npc1_RunID)
+	{
+		npc1.Play(LOOP, (float)skip, FALSE, TRUE);
+		if (!npc1_running){
+			npc1.SetCurrentAction(NULL, 0, npc1_IdleID); 
+		}
 	}
 	else if (npc1_CurPoseID == npc1_DieID)
 	{
 		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
 		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
+	}
+	else if (npc1_CurPoseID == npc1_NormalAttack1ID)
+	{
+		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
+		if (!npc1.Play(ONCE, (float)skip, FALSE, TRUE))
+		{
+			npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
+		}
 	}
 	else if (npc1_CurPoseID == npc1_Damage1ID)
 	{
@@ -406,11 +548,36 @@ void GameAI(int skip)
 	if (npc2_CurPoseID == npc2_IdleID)
 	{
 		npc2.Play(LOOP, (float)skip, FALSE, TRUE);
+		if (npc2_running)
+		{
+			npc2.SetCurrentAction(NULL, 0, npc2_RunID);
+		}
+		if (npc2_canAttack)
+		{
+			if (npc2_attack_counter == 0)
+				npc2.SetCurrentAction(NULL, 0, npc2_NormalAttack1ID);
+		}
+	}
+	else if (npc2_CurPoseID == npc2_RunID)
+	{
+		npc2.Play(LOOP, (float)skip, FALSE, TRUE);
+		if (!npc2_running)
+		{
+			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
+		}
 	}
 	else if (npc2_CurPoseID == npc2_DieID)
 	{
 		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
 		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
+	}
+	else if (npc2_CurPoseID == npc2_NormalAttack1ID)
+	{
+		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
+		if (!npc2.Play(ONCE, (float)skip, FALSE, TRUE))
+		{
+			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
+		}
 	}
 	else if (npc2_CurPoseID == npc2_Damage1ID){
 		if (!npc2.Play(ONCE, (float)skip, FALSE, TRUE))
@@ -599,7 +766,7 @@ void RenderIt(int skip)
 
 	char actorPosS[256], weaponPosS[256], npctatus[256];
 	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
-	sprintf(weaponPosS, "weapon pos: %8.3f %8.3f %8.3f", weaponPos[0], weaponPos[1], weaponPos[2]);
+	sprintf(weaponPosS, "weapon pos: %d %8.3f %8.3f", nodelist.size(), weaponPos[1], weaponPos[2]);
 	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d ", npc1_HealthPoints, npc2_HealthPoints);
 
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
@@ -624,24 +791,152 @@ void Movement(BYTE code, BOOL4 value)
 	//===============================
 	FnCharacter actor;
 	actor.ID(actorID);
-	if (!value) {
-		stack--;
-		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
-		if (stack <= 0) {
-			CurPoseID = IdleID;
-			actor.SetCurrentAction(NULL, 0, CurPoseID);
-			actor.Play(START, 0.0f, FALSE, TRUE);
-		}
-	}
-	else {
-		stack++;
-		if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
-
-		CurPoseID = RunID;
+if (!value) {
+	stack--;
+	if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
+	if (stack <= 0) {
+		CurPoseID = IdleID;
 		actor.SetCurrentAction(NULL, 0, CurPoseID);
 		actor.Play(START, 0.0f, FALSE, TRUE);
 	}
 }
+else {
+	stack++;
+	if (CurPoseID != RunID && CurPoseID != IdleID) return;//fix bug for release move hotkey interruput attack
+
+	CurPoseID = RunID;
+	actor.SetCurrentAction(NULL, 0, CurPoseID);
+	actor.Play(START, 0.0f, FALSE, TRUE);
+}
+}
+
+Node* NPCmovement(CHARACTERid npcID)
+{
+	// A* algorithm
+	int counter = 0;
+	FnCharacter actor;
+	float apos[3];
+	actor.ID(actorID);
+	actor.GetPosition(apos);
+	Node *start;
+	start = (struct Node *)malloc(sizeof(struct Node));
+	nodelist.push_back(start);
+	FnCharacter npc;
+	npc.ID(npcID);
+	npc.GetPosition(start->pos);
+	start->parent = start;
+	start->gn = 0;
+	start->hn = abs(start->pos[0] - apos[0]) + abs(start->pos[1] - apos[1]) + abs(start->pos[2] - apos[2]);
+	start->fn = start->gn + start->hn;
+	open.push_back(start);
+
+	while (!open.empty()){
+		// get node n in open which has lowest fn
+		vector<Node*>::iterator it, minit;
+		Node* n;
+		float minfn = 200000;
+		counter++;
+		for (it = open.begin(); it != open.end(); it++){
+			if ((*it)->fn < minfn){
+				minfn = (*it)->fn;
+				minit = it;
+				n = (*it);
+			}
+		}
+
+		if (sqrt(dist3(n->pos,apos)) < 100 || counter >= 6){
+			return n;
+		}
+		open.erase(minit);
+		close.push_back(n);
+
+		// for each n' = CanMove(n, direction)
+		FnObject terrain;
+		terrain.ID(tID);
+		float hitray[3], hitpos[3]; // collision ray and position
+		minfn = 200000;
+		for (int i = 0; i < 4; i++){
+			Node *neighbor = (struct Node *)malloc(sizeof(struct Node));
+			if (i == 0){	//east
+				neighbor->pos[0] = n->pos[0] + 10; neighbor->pos[1] = n->pos[1]; neighbor->pos[2] = n->pos[2];
+			}
+			else if (i == 1){	//west
+				neighbor->pos[0] = n->pos[0] - 10; neighbor->pos[1] = n->pos[1]; neighbor->pos[2] = n->pos[2];
+			}
+			else if (i == 2){	//south
+				neighbor->pos[0] = n->pos[0]; neighbor->pos[1] = n->pos[1] - 10; neighbor->pos[2] = n->pos[2];
+			}
+			else if (i == 3){	//north
+				neighbor->pos[0] = n->pos[0]; neighbor->pos[1] = n->pos[1] + 10; neighbor->pos[2] = n->pos[2];
+			}
+
+			neighbor->gn = n->gn + 10;
+			neighbor->hn = abs(neighbor->pos[0] - apos[0]) + abs(neighbor->pos[1] - apos[1]) + abs(neighbor->pos[2] - apos[2]);
+			neighbor->fn = neighbor->gn + neighbor->hn;
+
+			// check collision
+			hitray[0] = n->pos[0] - neighbor->pos[0];
+			hitray[1] = n->pos[1] - neighbor->pos[1];
+			hitray[2] = n->pos[2] - neighbor->pos[2];
+			if (terrain.HitTest(n->pos, hitray, hitpos) > 0){
+				if (dist3(n->pos, hitpos) < dist3(n->pos, neighbor->pos)){
+					// collide!!
+					free(neighbor);
+					continue;
+				}
+			}
+
+			// check OPEN & CLOSED list
+			// if n' in OPEN list and not better, continue
+			bool flag = false;
+			vector<Node*>::iterator is;
+			for (it = open.begin(); it != open.end(); it++){
+				if (neighbor->pos[0] == (*it)->pos[0]
+					&& neighbor->pos[1] == (*it)->pos[1]
+					&& neighbor->pos[2] == (*it)->pos[2]){
+					if (neighbor->fn >= (*it)->fn){
+						flag = true;
+					}
+					break;
+				}
+			}
+			// if n' in CLOSED list and not better, continue
+			for (is = close.begin(); is != close.end(); is++){
+				if (neighbor->pos[0] == (*is)->pos[0]
+					&& neighbor->pos[1] == (*is)->pos[1]
+					&& neighbor->pos[2] == (*is)->pos[2]){
+					if (neighbor->fn >= (*is)->fn){
+						flag = true;
+					}
+					break;
+				}
+			}
+			if (flag){
+				free(neighbor);
+				continue;
+			}
+			else{
+				//remove any n' from OPEN and CLOSED
+				if (it != open.end()){
+					open.erase(it);
+				}
+				if (is != close.end()){
+					close.erase(is);
+				}
+			}
+
+			// add n as n's parent and add n' to OPEN
+			neighbor->parent = n;
+			open.push_back(neighbor);	
+			nodelist.push_back(neighbor);
+		}
+
+	}
+
+
+
+}
+
 
 void ActorAttack(BYTE code, BOOL4 value)
 {
