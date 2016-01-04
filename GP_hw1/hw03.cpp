@@ -15,6 +15,7 @@ Last Updated : 1004, 2015, Kevin C. Wang
 #include "FlyWin32.h"
 #include "RayTracer.h"
 
+char debugbuf[256]; // debug UI message buffer
 
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
@@ -36,7 +37,7 @@ ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
 
 unsigned int AttackRange = 100;
 float AttackRadius = 1.0f;
-
+float skill_camera_timer = 0;
 bool isCombo = false;
 ACTIONid NextAttackID;
 
@@ -79,7 +80,7 @@ void ActorAttack(BYTE, BOOL4);
 // timer callbacks
 void GameAI(int);
 void RenderIt(int);
-void Camera3PersonView(int);
+void Camera3PersonView(float);
 
 // mouse callbacks
 void InitPivot(int, int);
@@ -315,7 +316,7 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_UP, Movement, FALSE);      // Up for moving forward
 	FyDefineHotKey(FY_RIGHT, Movement, FALSE);   // Right for moving right
 	FyDefineHotKey(FY_LEFT, Movement, FALSE);    // Left for moving left
-	FyDefineHotKey(FY_DOWN, Movement, FALSE);	 // Back for moving back
+	FyDefineHotKey(FY_DOWN, Movement, FALSE);	 // Down for moving back
 	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
 	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
@@ -350,11 +351,11 @@ void GameAI(int skip)
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
 	CurPoseID = actor.GetCurrentAction(NULL);
+	//sprintf(debugbuf, "skill op %d", CurPoseID);
 	if (CurPoseID == IdleID || CurPoseID == RunID)
 	{
 		actor.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
-	
 	else if (CurPoseID == NormalAttack1ID || 
 			 CurPoseID == NormalAttack2ID || 
 			 CurPoseID == NormalAttack3ID ||
@@ -365,8 +366,8 @@ void GameAI(int skip)
 			 CurPoseID == UltimateAttackID)
 	{
 		isNPCHit();
-		actor.Play(ONCE, (float)skip, TRUE);
-		if (!actor.Play(ONCE, (float)skip, TRUE)){
+		//actor.Play(ONCE, (float)skip, TRUE);
+		if (!actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE)){
 			if (isCombo)
 			{
 				actor.SetCurrentAction(NULL, 0, NextAttackID);
@@ -383,6 +384,15 @@ void GameAI(int skip)
 		}
 	}
 
+	// special skill camera
+	// count how many step left and devide the camera rotate
+	CurPoseID = actor.GetCurrentAction(NULL);
+	if (CurPoseID == UltimateAttackID){
+		skill_camera_timer-= 2 * 3.14 / 120;
+		sprintf(debugbuf, "skill t %f", skill_camera_timer);
+		Camera3PersonView(skill_camera_timer);
+		CameraCollision();
+	}
 
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (npc1_CurPoseID == npc1_IdleID)
@@ -417,10 +427,9 @@ void GameAI(int skip)
 		{
 			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
 		}
-
 	}
 	
-	// basic version 3 person view move
+	// basic version 3 person move and view 
 	if (CurPoseID == RunID || CurPoseID == IdleID){
 		if (FyCheckHotKeyStatus(FY_UP)) {
 			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
@@ -437,125 +446,12 @@ void GameAI(int skip)
 		if (FyCheckHotKeyStatus(FY_DOWN)) {
 			actor.MoveForward(-speed/2, TRUE, FALSE, 0.0f, TRUE);
 		}
+		Camera3PersonView(0);
+		CameraCollision();
 	}
-	Camera3PersonView(skip);
-	CameraCollision();
-
-	/*
-	// hw 2 veriosn special move
-	// camera with move
-	float apos[3], cpos[3]; //actor,camera position
-	float fDir[3], uDir[3]; //actor face, up, right dir;
-	float rDir[3];
-	float cfDir[3], cuDir[3]; // camera face, up dir
-	float distance = 500, height = 100;
-	FnCamera camera;
-	camera.ID(cID);
-	camera.GetPosition(cpos);
-	camera.GetDirection(cfDir, cuDir);
-	
-	// front
-	if (CurPoseID == RunID || CurPoseID == IdleID){//make actor's attack and movement is independent action
-		if (FyCheckHotKeyStatus(FY_UP)) {
-			// get new actor face dir
-			fDir[0] = cfDir[0];
-			fDir[1] = cfDir[1];
-			fDir[2] = 0;
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera pos
-			cpos[0] = apos[0] - fDir[0] * distance;
-			cpos[1] = apos[1] - fDir[1] * distance;
-			cpos[2] = apos[2] + uDir[2] * height;
-			// camera set
-			camera.SetPosition(cpos);
-			// collision cam modification
-			CameraCollision();
-		}
-		// left circle
-		else if (FyCheckHotKeyStatus(FY_LEFT)) {
-			// set actor face left then move forward
-			cross3(fDir, cuDir, cfDir);
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// camera rotate
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera face
-			cfDir[0] = apos[0] - cpos[0];
-			cfDir[1] = apos[1] - cpos[1];
-			cfDir[2] = apos[2] - cpos[2] + height / 2;
-			// camera up
-			cross3(cuDir, cfDir, fDir);
-			// camera set
-			camera.SetDirection(cfDir, cuDir);
-		}
-		// right circle
-		else if (FyCheckHotKeyStatus(FY_RIGHT)) {
-			// set actor face right then move forward
-			cross3(fDir, cfDir, cuDir);
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// camera rotate
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera face
-			cfDir[0] = apos[0] - cpos[0];
-			cfDir[1] = apos[1] - cpos[1];
-			cfDir[2] = apos[2] - cpos[2] + height / 2;
-			// camera up
-			cross3(cuDir, fDir, cfDir);
-			// camera set
-			camera.SetDirection(cfDir, cuDir);
-		}
-		// back
-		else if (FyCheckHotKeyStatus(FY_DOWN)) {
-			// get new actor face dir
-			fDir[0] = -cfDir[0];
-			fDir[1] = -cfDir[1];
-			fDir[2] = 0;
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera pos
-			cpos[0] = apos[0] + fDir[0] * distance;
-			cpos[1] = apos[1] + fDir[1] * distance;
-			cpos[2] = apos[2] + uDir[2] * height;
-			// camera set
-			camera.SetPosition(cpos);
-			// collision cam modification
-			CameraCollision();
-		}
-		
-	}
-	*/
 }
 
-//
-void Camera3PersonView(int skip)
+void Camera3PersonView(float rotate)
 {
 	// camera
 	float apos[3], cpos[3]; //actor,camera position
@@ -571,15 +467,15 @@ void Camera3PersonView(int skip)
 	actor.GetDirection(fDir, uDir);
 	// calculate camera position & direction
 	// camera pos
-	cpos[0] = apos[0] - fDir[0] * distance;
-	cpos[1] = apos[1] - fDir[1] * distance;
+	cpos[0] = apos[0] - (fDir[0] * cos(rotate) - fDir[1] * sin(rotate)) * distance;
+	cpos[1] = apos[1] - (fDir[0] * sin(rotate) + fDir[1] * cos(rotate)) * distance;
 	cpos[2] = apos[2] + uDir[2] * height;
 	// camera face
 	cfDir[0] = apos[0] - cpos[0];
 	cfDir[1] = apos[1] - cpos[1];
 	cfDir[2] = apos[2] - cpos[2] + height / 2;
 	// camera up
-	cross3(rDir, fDir, uDir);
+	cross3(rDir, cfDir, uDir);
 	cross3(cuDir, rDir, cfDir);
 	// camera set
 	camera.SetPosition(cpos);
@@ -625,8 +521,8 @@ void CameraCollision(){
 	cfDir[1] = apos[1] - cpos[1];
 	cfDir[2] = apos[2] - cpos[2] + height / 2;
 	// camera up
-	cross3(rDir, fDir, uDir);
-	cross3(cuDir, cfDir, rDir);
+	cross3(rDir, cfDir, uDir);
+	cross3(cuDir, rDir, cfDir);
 	// rewind down ward
 	if (cuDir[2] < 0){
 		cross3(rDir, uDir, fDir);
@@ -691,6 +587,7 @@ void RenderIt(int skip)
 	if (frame >= 1000) {
 		frame = 0;
 	}
+	//sprintf(debugbuf,"frame %d", frame);
 
 	FnText text;
 	text.ID(textID);
@@ -715,7 +612,7 @@ void RenderIt(int skip)
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
 	text.Write(npctatus, 20, 120, 255, 255, 0);
-
+	text.Write(debugbuf, 20, 140, 255, 255, 0);
 
 	text.End();
 
@@ -807,6 +704,7 @@ void ActorAttack(BYTE code, BOOL4 value)
 		if (CurPoseID == IdleID || CurPoseID == RunID){
 			actor.SetCurrentAction(NULL, 0, UltimateAttackID);
 		}
+		skill_camera_timer = 0;
 	}
 }
 
