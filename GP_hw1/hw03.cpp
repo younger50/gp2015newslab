@@ -327,7 +327,6 @@ void GameAI(int skip)
 	{
 		actor.Play(LOOP, (float)skip, FALSE, TRUE);
 	}
-	
 	else if (CurPoseID == NormalAttack1ID || 
 			 CurPoseID == NormalAttack2ID || 
 			 CurPoseID == NormalAttack3ID ||
@@ -355,7 +354,6 @@ void GameAI(int skip)
 		}
 	}
 
-
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (npc1_CurPoseID == npc1_IdleID)
 	{
@@ -372,6 +370,9 @@ void GameAI(int skip)
 			npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
 		}
 	}
+
+
+
 
 	npc2_CurPoseID = npc2.GetCurrentAction(NULL);
 	if (npc2_CurPoseID == npc2_IdleID)
