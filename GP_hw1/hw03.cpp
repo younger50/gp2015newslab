@@ -16,6 +16,7 @@ Last Updated : 1004, 2015, Kevin C. Wang
 #include "RayTracer.h"
 
 char debugbuf[256]; // debug UI message buffer
+float pi = 3.14;
 
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
@@ -31,6 +32,9 @@ CHARACTERid npc1ID, npc2ID;		// the npc character
 OBJECTid hpid;
 GEOMETRYid hpboardid;
 
+// focus
+OBJECTid fcid;
+GEOMETRYid fcbid;
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -158,16 +162,23 @@ void FyMain(int argc, char **argv)
 
 
 	//hp
-	
 	float hpsize[2] = { 50, 5 };
 	FnObject hpobj;
-	FnBillboard hpboard;
-
 	hpid = scene.CreateObject(OBJECT);
 	hpobj.ID(hpid);
 	hpobj.Show(TRUE);
 	hpboardid = hpobj.Billboard(NULL, hpsize, "Data\\NTU6\\NPCs\\hp", 0);
-	
+
+	// focus
+	float fcsize[2] = { 200, 150 };
+	FnObject fcobj;
+	fcid = scene.CreateObject(OBJECT);
+	fcobj.ID(fcid);
+	fcobj.Show(FALSE);
+	//fcobj.SetOpacity(0.5);
+	fcobj.SetAlphaFlag(TRUE);
+	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\f1", 0);
+
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
 	FnRoom room;
@@ -398,11 +409,18 @@ void GameAI(int skip)
 	// special skill camera
 	// count how many step left and devide the camera rotate
 	CurPoseID = actor.GetCurrentAction(NULL);
+	FnObject fcobj;
+	fcobj.ID(fcid);
 	if (CurPoseID == UltimateAttackID){
-		skill_camera_timer-= 2 * 3.14 / 120;
+		fcobj.Show(TRUE);
+		skill_camera_timer+= 2 * pi / (120-30);
+		if (skill_camera_timer > 2 * pi) skill_camera_timer = 2 * pi;
 		sprintf(debugbuf, "skill t %f", skill_camera_timer);
 		Camera3PersonView(skill_camera_timer);
 		CameraCollision();
+	}
+	else {
+		fcobj.Show(FALSE);
 	}
 
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
@@ -631,23 +649,27 @@ void RenderIt(int skip)
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
 	text.Write(npctatus, 20, 120, 255, 255, 0);
 	text.Write(debugbuf, 20, 140, 255, 255, 0);
-
 	text.End();
-
-
-
-	//float color[3] = {255.0,255.0,255.0};
-	float color[3] = { 0, 0, 0 };
-	float size[2] = { 100, 100};
-	
 	
 	// the Robber hpID
-	
 	FnObject hpobj;
 	hpobj.ID(hpid);
 	npc2Pos[2]=npc2Pos[2] + 70;
 	hpobj.SetPosition(npc2Pos);
 	
+	// focus special effect picture
+	FnObject fcobj;
+	float fcpos[3];
+	float fcdis = 300;
+	fcobj.ID(fcid);
+	camera.ID(cID);
+	camera.GetPosition(pos);
+	camera.GetDirection(fDir, uDir);
+	fcpos[0] = pos[0] + fDir[0] * fcdis;
+	fcpos[1] = pos[1] + fDir[1] * fcdis;
+	fcpos[2] = pos[2] + fDir[2] * fcdis;
+	fcobj.SetPosition(fcpos);
+
 
 	// swap buffer
 	FySwapBuffers();
@@ -930,8 +952,6 @@ void isNPCHit()
 
 		//hp 
 		hpsize[0] = hpsize[0] *npc2_HealthPoints/100;
-		
-		
 		hpboard.SetPositionSize( NULL, hpsize);
 		//hpboard.ReplaceMaterial
 		
