@@ -19,10 +19,12 @@ Last Updated : 1004, 2015, Kevin C. Wang
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
+
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
+
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -165,6 +167,21 @@ void FyMain(int argc, char **argv)
 	FySetCharacterPath("Data\\NTU6\\NPCs");
 	npc2ID = scene.LoadCharacter("AMA001");
 	*/
+	
+	FySetScenePath("Data\\NTU6\\Scenes");
+	FnSprite hp;					// the Donzo hpID
+	hp.Object(scene.CreateObject(SPRITE));
+	hp.SetPosition(3569.0f, -2708.0f, 100.0f);
+	//hp.SetPosition(100, 100, 0);
+	hp.SetSize(1000, 1000);
+	hp.SetImage("Jb",0,NULL,0,NULL,NULL,MANAGED_MEMORY,FALSE,FALSE);
+
+	FnSprite hp2;					// the Donzo hpID
+	hp2.Object(scene.CreateObject(SPRITE));
+	hp2.SetPosition(3569.0f, -2708.0f, 10000.0f);
+	//hp.SetPosition(100, 100, 0);
+	hp2.SetSize(1000, 1000);
+	hp2.SetImage("criticalCHN", 0, NULL, 0, NULL, NULL, MANAGED_MEMORY, FALSE, FALSE);
 
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
@@ -177,6 +194,8 @@ void FyMain(int argc, char **argv)
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = actor.PutOnTerrain(pos);
 
+	
+
 	float npc1_pos[3], npc1_fDir[3], npc1_uDir[3];
 	FnCharacter npc1;
 	npc1.ID(npc1ID);
@@ -186,6 +205,7 @@ void FyMain(int argc, char **argv)
 	npc1.SetDirection(npc1_fDir, npc1_uDir);
 	npc1.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = npc1.PutOnTerrain(npc1_pos);
+
 
 
 	float npc2_pos[3], npc2_fDir[3], npc2_uDir[3];
@@ -245,11 +265,15 @@ void FyMain(int argc, char **argv)
 	npc1.SetCurrentAction(NULL, 0, npc1_IdleID);
 	npc1.Play(START, 0.0f, FALSE, TRUE);
 	npc1.TurnRight(90.0f);
+	
 
 	npc2_CurPoseID = npc2_IdleID;
 	npc2.SetCurrentAction(NULL, 0, npc2_CurPoseID);
 	npc2.Play(START, 0.0f, FALSE, TRUE);
 	npc2.TurnRight(90.0f);
+
+	
+
 
 	// translate the camera
 	cID = scene.CreateObject(CAMERA);
@@ -270,6 +294,9 @@ void FyMain(int argc, char **argv)
 	float mainLightPos[3] = { -4579.0, -714.0, 15530.0 };
 	float mainLightFDir[3] = { 0.276, 0.0, -0.961 };
 	float mainLightUDir[3] = { 0.961, 0.026, 0.276 };
+
+
+
 
 	FnLight lgt;
 	lgt.ID(scene.CreateObject(LIGHT));
@@ -338,6 +365,7 @@ void GameAI(int skip)
 			 CurPoseID == UltimateAttackID)
 	{
 		isNPCHit();
+		actor.Play(ONCE, (float)skip, TRUE);
 		if (!actor.Play(ONCE, (float)skip, TRUE)){
 			if (isCombo)
 			{
@@ -364,6 +392,7 @@ void GameAI(int skip)
 	else if (npc1_CurPoseID == npc1_DieID)
 	{
 		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
+		npc1.Play(ONCE, (float)skip, FALSE, TRUE);
 	}
 	else if (npc1_CurPoseID == npc1_Damage1ID)
 	{
@@ -381,12 +410,14 @@ void GameAI(int skip)
 	else if (npc2_CurPoseID == npc2_DieID)
 	{
 		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
+		npc2.Play(ONCE, (float)skip, FALSE, TRUE);
 	}
 	else if (npc2_CurPoseID == npc2_Damage1ID){
 		if (!npc2.Play(ONCE, (float)skip, FALSE, TRUE))
 		{
 			npc2.SetCurrentAction(NULL, 0, npc2_IdleID);
 		}
+
 	}
 	
 	
