@@ -16,6 +16,7 @@ Last Updated : 1004, 2015, Kevin C. Wang
 #include "RayTracer.h"
 
 char debugbuf[256]; // debug UI message buffer
+float pi = 3.14;
 
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
@@ -31,6 +32,9 @@ CHARACTERid npc1ID, npc2ID;		// the npc character
 OBJECTid actor_hpid,npc1_hpid, npc2_hpid;
 GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
 
+// focus
+OBJECTid fcid;
+GEOMETRYid fcbid;
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -157,6 +161,7 @@ void FyMain(int argc, char **argv)
 	terrain.Show(FALSE);
 
 
+
 	//lyubu's hp
 
 	float actor_hpsize[2] = { 50, 5 };
@@ -182,7 +187,17 @@ void FyMain(int argc, char **argv)
 	npc2_hpobj.Show(TRUE);
 	npc2_hpboardid = npc2_hpobj.Billboard(NULL, npc2_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
 	
-	
+
+	// focus
+	float fcsize[2] = { 200, 150 };
+	FnObject fcobj;
+	fcid = scene.CreateObject(OBJECT);
+	fcobj.ID(fcid);
+	fcobj.Show(FALSE);
+	//fcobj.SetOpacity(0.5);
+	fcobj.SetAlphaFlag(TRUE);
+	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\f1", 0);
+
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
 	FnRoom room;
@@ -413,11 +428,18 @@ void GameAI(int skip)
 	// special skill camera
 	// count how many step left and devide the camera rotate
 	CurPoseID = actor.GetCurrentAction(NULL);
+	FnObject fcobj;
+	fcobj.ID(fcid);
 	if (CurPoseID == UltimateAttackID){
-		skill_camera_timer-= 2 * 3.14 / 120;
+		fcobj.Show(TRUE);
+		skill_camera_timer+= 2 * pi / (120-30);
+		if (skill_camera_timer > 2 * pi) skill_camera_timer = 2 * pi;
 		sprintf(debugbuf, "skill t %f", skill_camera_timer);
 		Camera3PersonView(skill_camera_timer);
 		CameraCollision();
+	}
+	else {
+		fcobj.Show(FALSE);
 	}
 
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
@@ -655,17 +677,18 @@ void RenderIt(int skip)
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
 	text.Write(npctatus, 20, 120, 255, 255, 0);
 	text.Write(debugbuf, 20, 140, 255, 255, 0);
-
 	text.End();
 
 
-	// the donzo hpID
+
+
+	// the lyubu hpID
 	FnObject actor_hpobj;
 	actor_hpobj.ID(actor_hpid);
 	actorPos[2] = actorPos[2] + 100;
 	actor_hpobj.SetPosition(actorPos);
 	
-	
+
 	// the donzo hpID
 	FnObject npc1_hpobj;
 	npc1_hpobj.ID(npc1_hpid);
@@ -673,6 +696,7 @@ void RenderIt(int skip)
 	npc1_hpobj.SetPosition(npc1Pos);
 
 	// the Robber hpID
+
 	
 	FnObject npc2_hpobj;
 	npc2_hpobj.ID(npc2_hpid);
@@ -680,6 +704,19 @@ void RenderIt(int skip)
 	npc2_hpobj.SetPosition(npc2Pos);
 	
 	
+	// focus special effect picture
+	FnObject fcobj;
+	float fcpos[3];
+	float fcdis = 300;
+	fcobj.ID(fcid);
+	camera.ID(cID);
+	camera.GetPosition(pos);
+	camera.GetDirection(fDir, uDir);
+	fcpos[0] = pos[0] + fDir[0] * fcdis;
+	fcpos[1] = pos[1] + fDir[1] * fcdis;
+	fcpos[2] = pos[2] + fDir[2] * fcdis;
+	fcobj.SetPosition(fcpos);
+
 
 	// swap buffer
 	FySwapBuffers();
@@ -969,12 +1006,10 @@ void isNPCHit()
 		npc2_AlreadyHit = true;
 		npc2_HealthPoints -= 20;
 
-		//hp 
-		
+		//hp 	
 		npc2_hpsize[0] = npc2_hpsize[0] * npc2_HealthPoints / 100;
 		npc2_hpboard.SetPositionSize(NULL, npc2_hpsize);
-		
-		
+
 		if (npc2_HealthPoints <= 0){
 			npc2.SetCurrentAction(NULL, 0, npc2_DieID);
 		}
