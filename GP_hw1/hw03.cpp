@@ -20,11 +20,14 @@ VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
 
+
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
+//hp
+OBJECTid hpid;
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -131,6 +134,8 @@ void FyMain(int argc, char **argv)
 	vID = FyCreateViewport(0, 0, 1024, 768);
 	FnViewport vp;
 	vp.ID(vID);
+	
+	
 
 	// create a 3D scene
 	sID = FyCreateScene(10);
@@ -148,6 +153,17 @@ void FyMain(int argc, char **argv)
 	BOOL beOK1 = terrain.Load("terrain");
 	terrain.Show(FALSE);
 
+
+	//hp
+	
+	float size[2] = { 50, 5 };
+	FnObject hpobj;
+	hpid = scene.CreateObject(OBJECT);
+	hpobj.ID(hpid);
+	hpobj.Show(TRUE);
+	hpobj.Billboard(NULL, size, "Data\\NTU6\\NPCs\\hp", 0);
+	
+	
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
 	FnRoom room;
@@ -169,19 +185,11 @@ void FyMain(int argc, char **argv)
 	*/
 	
 	FySetScenePath("Data\\NTU6\\Scenes");
-	FnSprite hp;					// the Donzo hpID
-	hp.Object(scene.CreateObject(SPRITE));
-	hp.SetPosition(3569.0f, -2708.0f, 100.0f);
-	//hp.SetPosition(100, 100, 0);
-	hp.SetSize(1000, 1000);
-	hp.SetImage("Jb",0,NULL,0,NULL,NULL,MANAGED_MEMORY,FALSE,FALSE);
+	
 
-	FnSprite hp2;					// the Donzo hpID
-	hp2.Object(scene.CreateObject(SPRITE));
-	hp2.SetPosition(3569.0f, -2708.0f, 10000.0f);
-	//hp.SetPosition(100, 100, 0);
-	hp2.SetSize(1000, 1000);
-	hp2.SetImage("criticalCHN", 0, NULL, 0, NULL, NULL, MANAGED_MEMORY, FALSE, FALSE);
+
+	
+	
 
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
@@ -442,117 +450,7 @@ void GameAI(int skip)
 	Camera3PersonView(skip);
 	CameraCollision();
 
-	/*
-	// hw 2 veriosn special move
-	// camera with move
-	float apos[3], cpos[3]; //actor,camera position
-	float fDir[3], uDir[3]; //actor face, up, right dir;
-	float rDir[3];
-	float cfDir[3], cuDir[3]; // camera face, up dir
-	float distance = 500, height = 100;
-	FnCamera camera;
-	camera.ID(cID);
-	camera.GetPosition(cpos);
-	camera.GetDirection(cfDir, cuDir);
 	
-	// front
-	if (CurPoseID == RunID || CurPoseID == IdleID){//make actor's attack and movement is independent action
-		if (FyCheckHotKeyStatus(FY_UP)) {
-			// get new actor face dir
-			fDir[0] = cfDir[0];
-			fDir[1] = cfDir[1];
-			fDir[2] = 0;
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera pos
-			cpos[0] = apos[0] - fDir[0] * distance;
-			cpos[1] = apos[1] - fDir[1] * distance;
-			cpos[2] = apos[2] + uDir[2] * height;
-			// camera set
-			camera.SetPosition(cpos);
-			// collision cam modification
-			CameraCollision();
-		}
-		// left circle
-		else if (FyCheckHotKeyStatus(FY_LEFT)) {
-			// set actor face left then move forward
-			cross3(fDir, cuDir, cfDir);
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// camera rotate
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera face
-			cfDir[0] = apos[0] - cpos[0];
-			cfDir[1] = apos[1] - cpos[1];
-			cfDir[2] = apos[2] - cpos[2] + height / 2;
-			// camera up
-			cross3(cuDir, cfDir, fDir);
-			// camera set
-			camera.SetDirection(cfDir, cuDir);
-		}
-		// right circle
-		else if (FyCheckHotKeyStatus(FY_RIGHT)) {
-			// set actor face right then move forward
-			cross3(fDir, cfDir, cuDir);
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// camera rotate
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera face
-			cfDir[0] = apos[0] - cpos[0];
-			cfDir[1] = apos[1] - cpos[1];
-			cfDir[2] = apos[2] - cpos[2] + height / 2;
-			// camera up
-			cross3(cuDir, fDir, cfDir);
-			// camera set
-			camera.SetDirection(cfDir, cuDir);
-		}
-		// back
-		else if (FyCheckHotKeyStatus(FY_DOWN)) {
-			// get new actor face dir
-			fDir[0] = -cfDir[0];
-			fDir[1] = -cfDir[1];
-			fDir[2] = 0;
-			uDir[0] = 0;
-			uDir[1] = 0;
-			uDir[2] = 1;
-			actor.SetDirection(fDir, uDir);
-			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
-			// get actor position & direction
-			actor.GetPosition(apos);
-			actor.GetDirection(fDir, uDir);
-			// calculate camera position & direction
-			// camera pos
-			cpos[0] = apos[0] + fDir[0] * distance;
-			cpos[1] = apos[1] + fDir[1] * distance;
-			cpos[2] = apos[2] + uDir[2] * height;
-			// camera set
-			camera.SetPosition(cpos);
-			// collision cam modification
-			CameraCollision();
-		}
-		
-	}
-	*/
 }
 
 //
@@ -649,14 +547,17 @@ void RenderIt(int skip)
 	// render the whole scene
 	vp.ID(vID);
 	vp.Render3D(cID, TRUE, TRUE);
+	
 
 	// get camera's data
 	FnCamera camera;
 	camera.ID(cID);
+	
 
 	float pos[3], fDir[3], uDir[3];
 	camera.GetPosition(pos);
 	camera.GetDirection(fDir, uDir);
+
 
 	//get actor's data
 	FnCharacter actor;
@@ -713,12 +614,27 @@ void RenderIt(int skip)
 	sprintf(weaponPosS, "weapon pos: %8.3f %8.3f %8.3f", weaponPos[0], weaponPos[1], weaponPos[2]);
 	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d ", npc1_HealthPoints, npc2_HealthPoints);
 
+
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
 	text.Write(weaponPosS, 20, 100, 255, 255, 0);
 	text.Write(npctatus, 20, 120, 255, 255, 0);
 
-
 	text.End();
+
+
+
+	//float color[3] = {255.0,255.0,255.0};
+	float color[3] = { 0, 0, 0 };
+	float size[2] = { 100, 100};
+	
+	
+	// the Robber hpID
+	
+	FnObject hpobj;
+	hpobj.ID(hpid);
+	npc2Pos[2]=npc2Pos[2] + 70;
+	hpobj.SetPosition(npc2Pos);
+	
 
 	// swap buffer
 	FySwapBuffers();
