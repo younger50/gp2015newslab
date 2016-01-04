@@ -463,8 +463,6 @@ void GameAI(int skip)
 		Camera3PersonView(0);
 		CameraCollision();
 	}
-	Camera3PersonView(skip);
-	CameraCollision();
 }
 
 void Camera3PersonView(float rotate)
