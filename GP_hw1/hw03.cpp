@@ -510,7 +510,7 @@ void GameAI(int skip)
 		//attack cool down
 		npc1_attack_counter++;
 		npc1_attack_counter %= (int)(30 * npc1_attackrate);
-		//NPCattackActor(npc1ID);
+		NPCattackActor(npc1ID);
 
 	}
 	if (npc2_HealthPoints != 0){
