@@ -37,6 +37,9 @@ GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
 // focus
 OBJECTid fcid;
 GEOMETRYid fcbid;
+// fx
+GAMEFX_SYSTEMid lyfxID;
+OBJECTid lyfxdumID;
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -157,6 +160,7 @@ void FyMain(int argc, char **argv)
 	FySetModelPath("Data\\NTU6\\Scenes");
 	FySetTexturePath("Data\\NTU6\\Scenes\\Textures");
 	FySetScenePath("Data\\NTU6\\Scenes");
+	FySetGameFXPath("Data\\NTU6\\FXhw");
 
 	// create a viewport
 	vID = FyCreateViewport(0, 0, 1024, 768);
@@ -218,6 +222,10 @@ void FyMain(int argc, char **argv)
 	//fcobj.SetOpacity(0.5);
 	fcobj.SetAlphaFlag(TRUE);
 	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\f1", 0);
+
+	// create a new game FX system
+	lyfxID = scene.CreateGameFXSystem();
+	lyfxdumID = scene.CreateObject();
 
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
@@ -446,6 +454,36 @@ void GameAI(int skip)
 		}
 	}
 
+	// special skill effect
+	// count how many step left and rotate camera 
+	CurPoseID = actor.GetCurrentAction(NULL);
+	FnObject fcobj;
+	fcobj.ID(fcid);
+	if (CurPoseID == UltimateAttackID){
+		float rotate = 0;
+		fcobj.Show(TRUE);
+		skill_camera_timer += 1;
+		rotate = skill_camera_timer * 2 * pi / (120 - 30);
+		if (rotate > 2 * pi) rotate = 2 * pi;
+		//sprintf(debugbuf, "skill t %f", skill_camera_timer);
+		//camera rotate
+		Camera3PersonView(rotate);
+		CameraCollision();
+		//slash effect
+		if ( skill_camera_timer > 80){
+			FnGameFXSystem gxS(lyfxID);
+			FnObject actorWeapon;
+			//float pos[3];
+			//actor.GetPosition(pos);
+			//gxS.SetPlayLocation(pos);
+			gxS.SetParentObjectForAll(lyfxdumID);
+			gxS.Play((float)skip, ONCE);
+		}
+	}
+	else {
+		fcobj.Show(FALSE);
+	}
+	
 	// npc AI
 	if (npc1_HealthPoints != 0){
 		// movement
@@ -544,23 +582,6 @@ void GameAI(int skip)
 		npc2_attack_counter %= (int)(30 * npc2_attackrate);
 	}
 
-	// special skill camera
-	// count how many step left and devide the camera rotate
-	CurPoseID = actor.GetCurrentAction(NULL);
-	FnObject fcobj;
-	fcobj.ID(fcid);
-	if (CurPoseID == UltimateAttackID){
-		fcobj.Show(TRUE);
-		skill_camera_timer += 2 * pi / (120 - 30);
-		if (skill_camera_timer > 2 * pi) skill_camera_timer = 2 * pi;
-		sprintf(debugbuf, "skill t %f", skill_camera_timer);
-		Camera3PersonView(skill_camera_timer);
-		CameraCollision();
-	}
-	else {
-		fcobj.Show(FALSE);
-	}
-
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (npc1_CurPoseID == npc1_IdleID)
 	{
@@ -647,8 +668,8 @@ void GameAI(int skip)
 		}
 	}
 
-	// basic version 3 person move and view 
-	if (CurPoseID == RunID || CurPoseID == IdleID){
+	// move logic and 3 person view camera
+	if (CurPoseID == RunID){
 		if (FyCheckHotKeyStatus(FY_UP)) {
 			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
 		}
@@ -667,6 +688,8 @@ void GameAI(int skip)
 		Camera3PersonView(0);
 		CameraCollision();
 	}
+	// idle logic
+	if ( CurPoseID == IdleID){}
 }
 
 void Camera3PersonView(float rotate)
@@ -1100,8 +1123,17 @@ void ActorAttack(BYTE code, BOOL4 value)
 	else if (code == FY_C){
 		if (CurPoseID == IdleID || CurPoseID == RunID){
 			actor.SetCurrentAction(NULL, 0, UltimateAttackID);
+			// special effect setup
+			skill_camera_timer = 0;
+			FnGameFXSystem gfx(lyfxID);
+			FnObject dummy(lyfxdumID);
+			float pos[3],fdir[3],udir[3];
+			actor.GetPosition(pos);
+			actor.GetDirection(fdir, udir);
+			gfx.Load("mod_Lyubu_atk01", TRUE);
+			dummy.SetPosition(pos);
+			dummy.SetDirection(fdir, udir);
 		}
-		skill_camera_timer = 0;
 	}
 }
 
