@@ -30,6 +30,10 @@ int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
+//sound
+AUDIOid background_sound_id;
+
+
 //hp
 OBJECTid actor_hpid,npc1_hpid, npc2_hpid;
 GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
@@ -55,7 +59,7 @@ ACTIONid NextAttackID;
 void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
-
+void playmusic(FnAudio,char *);
 
 // npc1 = Donzo
 ACTIONid npc1_IdleID, npc1_RunID, npc1_CurPoseID;
@@ -240,12 +244,19 @@ void FyMain(int argc, char **argv)
 	*/
 	
 	FySetScenePath("Data\\NTU6\\Scenes");
-	
-
-
+	FySetAudioPath("Data\\NTU6\\Media");
 	
 	
+	FnAudio background_sound;
 
+	background_sound.ID(FyCreateAudio());
+	background_sound.Load("MUSIC_fogforest");
+
+	//background_sound.SetVolume(100.0f);
+	background_sound.Play(LOOP);
+	
+	
+	
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
 	FnCharacter actor;
@@ -256,6 +267,7 @@ void FyMain(int argc, char **argv)
 	actor.SetDirection(fDir, uDir);
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = actor.PutOnTerrain(pos);
+
 
 	
 
@@ -407,6 +419,9 @@ void GameAI(int skip)
 	FnCharacter npc2;
 	float speed = 10.0f;
 	float rotate = 5.0f;
+
+	//sound
+
 
 	// play character pose
 	actor.ID(actorID);
@@ -1257,15 +1272,20 @@ void isNPCHit()
 	max[1] = npc1Pos[1] + 20;
 	max[2] = npc1Pos[2] + 70;
 
+	//hp
 	FnBillboard npc1_hpboard;
 	npc1_hpboard.ID(npc1_hpboardid);
 	float npc1_hpsize[2] = { 50, 5 };
+
+	FnAudio npcishit_sound;
 
 	CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !npc1_AlreadyHit && CurPoseID != npc1_DieID )
 	{
 		npc1_AlreadyHit = true;
 		npc1_HealthPoints -= 20;
+		
+		
 
 		//hp 's picture is shorter
 		npc1_hpsize[0] = npc1_hpsize[0] * npc1_HealthPoints / 100;
@@ -1278,6 +1298,9 @@ void isNPCHit()
 		else{
 			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
 		}
+
+		//sound
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 
 	}
 
@@ -1311,7 +1334,17 @@ void isNPCHit()
 		else{
 			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
 		}
+		//sound 
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 	}
 
 }
 
+void playmusic(FnAudio music,char *filename){
+	
+
+	music.ID(FyCreateAudio());
+	music.Load(filename);
+	music.Play(ONCE);
+
+}
