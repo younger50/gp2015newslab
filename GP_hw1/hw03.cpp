@@ -58,6 +58,7 @@ void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
 void NPCattackActor(CHARACTERid npcID);
+int NPCcollideToOther();
 
 
 // npc1 = Donzo
@@ -454,23 +455,20 @@ void GameAI(int skip)
 			}
 		}
 	}
-	else if (CurPoseID == RightDamageID || CurPoseID == DieID)
+	else if (CurPoseID == RightDamageID)
 	{
 		if (!actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE)){
-			if (isCombo)
-			{
-				actor.SetCurrentAction(NULL, 0, NextAttackID);
-				isCombo = false;
+			// recovery the pervious state 
+			if (stack <= 0){
+				actor.SetCurrentAction(NULL, 0, IdleID);
 			}
-			else{// recovery the pervious state 
-				if (stack <= 0){
-					actor.SetCurrentAction(NULL, 0, IdleID);
-				}
-				else{
-					actor.SetCurrentAction(NULL, 0, RunID);
-				}
+			else{
+				actor.SetCurrentAction(NULL, 0, RunID);
 			}
 		}
+	}
+	else if (CurPoseID == DieID){
+		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
 	}
 
 	//==============================================
@@ -1033,6 +1031,13 @@ Node* NPCmovement(CHARACTERid npcID)
 					continue;
 				}
 			}
+			/*
+			else if (NPCcollideToOther(neighbor->pos)){
+				// collide to other NPC
+				free(neighbor);
+				continue;
+			}
+			*/
 
 			// check OPEN & CLOSED list
 			// if n' in OPEN list and not better, continue
@@ -1410,5 +1415,10 @@ void isNPCHit()
 		}
 	}
 
+}
+
+int NPCcollideToOther()
+{
+	return 0;
 }
 
