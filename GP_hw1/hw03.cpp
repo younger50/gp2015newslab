@@ -31,6 +31,10 @@ int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
+//sound
+AUDIOid background_sound_id;
+
+
 //hp
 OBJECTid actor_hpid,npc1_hpid, npc2_hpid;
 GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
@@ -38,6 +42,9 @@ GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
 // focus
 OBJECTid fcid;
 GEOMETRYid fcbid;
+// fx
+GAMEFX_SYSTEMid lyfxID;
+OBJECTid lyfxdumID;
 
 // actor = lyubu
 ACTIONid IdleID, RunID, WalkID, CurPoseID;
@@ -58,8 +65,11 @@ ACTIONid NextAttackID;
 void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
+
+void playmusic(FnAudio,char *);
 void NPCattackActor(CHARACTERid npcID);
 int NPCcollideToOther(CHARACTERid npcID, float* pos);
+
 
 
 // npc1 = Donzo
@@ -68,7 +78,7 @@ ACTIONid npc1_NormalAttack1ID, npc1_NormalAttack2ID, npc1_NormalAttack3ID;
 ACTIONid npc1_HeavyAttack1ID;
 ACTIONid npc1_GuardID;
 ACTIONid npc1_Damage1ID, npc1_Damage2ID, npc1_DieID;
-int npc1_HealthPoints = 100;
+int npc1_HealthPoints = 20;
 float npc1_attackrate = 0.5f;
 int npc1_attack_counter = 0;
 bool npc1_AlreadyHit = false;
@@ -81,7 +91,7 @@ ACTIONid npc2_IdleID, npc2_RunID,npc2_CurPoseID;
 ACTIONid npc2_NormalAttack1ID, npc2_NormalAttack2ID; 
 ACTIONid npc2_HeavyAttack1ID;
 ACTIONid npc2_Damage1ID, npc2_Damage2ID, npc2_DieID;
-int npc2_HealthPoints = 100;
+int npc2_HealthPoints = 20;
 float npc2_attackrate = 0.5f;
 int npc2_attack_counter = 0;
 bool npc2_AlreadyHit = false;
@@ -168,6 +178,7 @@ void FyMain(int argc, char **argv)
 	FySetModelPath("Data\\NTU6\\Scenes");
 	FySetTexturePath("Data\\NTU6\\Scenes\\Textures");
 	FySetScenePath("Data\\NTU6\\Scenes");
+	FySetGameFXPath("Data\\NTU6\\FXhw");
 
 	// create a viewport
 	vID = FyCreateViewport(0, 0, 1024, 768);
@@ -228,7 +239,11 @@ void FyMain(int argc, char **argv)
 	fcobj.Show(FALSE);
 	//fcobj.SetOpacity(0.5);
 	fcobj.SetAlphaFlag(TRUE);
-	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\f1", 0);
+	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\FXhw\\f1", 0);
+
+	// create a new game FX system
+	lyfxID = scene.CreateGameFXSystem();
+	lyfxdumID = scene.CreateObject();
 
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
@@ -253,12 +268,19 @@ void FyMain(int argc, char **argv)
 	*/
 	
 	FySetScenePath("Data\\NTU6\\Scenes");
-	
-
-
+	FySetAudioPath("Data\\NTU6\\Media");
 	
 	
+	FnAudio background_sound;
 
+	background_sound.ID(FyCreateAudio());
+	background_sound.Load("MUSIC_fogforest");
+
+	//background_sound.SetVolume(100.0f);
+	background_sound.Play(LOOP);
+	
+	
+	
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
 	FnCharacter actor;
@@ -269,6 +291,7 @@ void FyMain(int argc, char **argv)
 	actor.SetDirection(fDir, uDir);
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = actor.PutOnTerrain(pos);
+
 
 	
 
@@ -421,6 +444,9 @@ void GameAI(int skip)
 	float speed = 10.0f;
 	float rotate = 5.0f;
 
+
+	// play character pose
+
 	actor.ID(actorID);
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
@@ -476,9 +502,40 @@ void GameAI(int skip)
 		}
 	}
 	else if (CurPoseID == DieID){
+
 		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
 	}
 
+	// special skill effect
+	// count how many step left, rotate camera and show slash effect
+	CurPoseID = actor.GetCurrentAction(NULL);
+	FnObject fcobj;
+	fcobj.ID(fcid);
+	if (CurPoseID == UltimateAttackID){
+		float rotate = 0;
+		fcobj.Show(TRUE);
+		skill_camera_timer += 1;
+		rotate = skill_camera_timer * 2 * pi / (120 - 30);
+		if (rotate > 2 * pi) rotate = 2 * pi;
+		//sprintf(debugbuf, "skill t %f", skill_camera_timer);
+		//camera rotate
+		Camera3PersonView(rotate);
+		CameraCollision();
+		//slash effect
+		if ( skill_camera_timer > 80){
+			FnGameFXSystem gxS(lyfxID);
+			FnObject actorWeapon;
+			//float pos[3];
+			//actor.GetPosition(pos);
+			//gxS.SetPlayLocation(pos);
+			gxS.SetParentObjectForAll(lyfxdumID);
+			gxS.Play((float)skip, ONCE);
+		}
+	}
+	else {
+		fcobj.Show(FALSE);
+	}
+	
 	//==============================================
 	//					NPC ai 	
 	//==============================================
@@ -605,25 +662,6 @@ void GameAI(int skip)
 
 	}
 
-	//==============================================
-	//			character special skill camera 
-	//==============================================
-	// count how many step left and devide the camera rotate
-	CurPoseID = actor.GetCurrentAction(NULL);
-	FnObject fcobj;
-	fcobj.ID(fcid);
-	if (CurPoseID == UltimateAttackID){
-		fcobj.Show(TRUE);
-		skill_camera_timer += 2 * pi / (120 - 30);
-		if (skill_camera_timer > 2 * pi) skill_camera_timer = 2 * pi;
-		sprintf(debugbuf, "skill t %f", skill_camera_timer);
-		Camera3PersonView(skill_camera_timer);
-		CameraCollision();
-	}
-	else {
-		fcobj.Show(FALSE);
-	}
-
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (npc1_CurPoseID == npc1_IdleID)
 	{
@@ -711,8 +749,8 @@ void GameAI(int skip)
 		}
 	}
 
-	// basic version 3 person move and view 
-	if (CurPoseID == RunID || CurPoseID == IdleID){
+	// move logic and 3 person view camera
+	if (CurPoseID == RunID){
 		if (FyCheckHotKeyStatus(FY_UP)) {
 			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
 		}
@@ -731,6 +769,8 @@ void GameAI(int skip)
 		Camera3PersonView(0);
 		CameraCollision();
 	}
+	// idle logic
+	if ( CurPoseID == IdleID){}
 }
 
 void Camera3PersonView(float rotate)
@@ -1193,8 +1233,26 @@ void ActorAttack(BYTE code, BOOL4 value)
 	else if (code == FY_C){
 		if (CurPoseID == IdleID || CurPoseID == RunID){
 			actor.SetCurrentAction(NULL, 0, UltimateAttackID);
+			// special effect setup
+			skill_camera_timer = 0;
+			FnGameFXSystem gfx(lyfxID);
+			FnObject dummy(lyfxdumID);
+			float pos[3],fdir[3],udir[3];
+			actor.GetPosition(pos);
+			actor.GetDirection(fdir, udir);
+			gfx.Load("mod_Lyubu_atk01", TRUE);
+			dummy.SetPosition(pos);
+			// force rotate slash fx to match last hit in ultimate attack 
+			float ddir[3];
+			cross3(ddir, fdir, udir);
+			udir[0] += ddir[0] * 1;
+			udir[1] += ddir[1] * 1;
+			cross3(ddir, udir, fdir);
+			fdir[0] += ddir[0] * 1;
+			fdir[1] += ddir[1] * 1;
+			fdir[2] += ddir[2] * 1;
+			dummy.SetDirection(fdir, udir);
 		}
-		skill_camera_timer = 0;
 	}
 }
 
@@ -1386,13 +1444,17 @@ void NPCattackActor(CHARACTERid npcID)
 	FnBillboard actor_hpboard;
 	actor_hpboard.ID(actor_hpboardid);
 	float actor_hpsize[2] = { 50, 5 };
+	//sound
+	FnAudio actorishit_sound;
 
 	CurPoseID = actor.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !actor_AlreadyHit && CurPoseID != DieID)
 	{
 		actor_AlreadyHit = true;
-		actor_HealthPoints -= 2;
+		actor_HealthPoints -= 5;
 
+		playmusic(actorishit_sound, "Data\\NTU6\\FX\\swordslash4");
+		
 		//hp 's picture is shorter
 		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
 		actor_hpboard.SetPositionSize(NULL, actor_hpsize);
@@ -1401,7 +1463,7 @@ void NPCattackActor(CHARACTERid npcID)
 		{
 			actor.SetCurrentAction(NULL, 0, DieID);
 		}
-		else{
+		else if ( CurPoseID == IdleID ){
 			actor.SetCurrentAction(NULL, 0, RightDamageID);
 		}
 	}
@@ -1446,15 +1508,20 @@ void isNPCHit()
 	max[1] = npc1Pos[1] + 30;
 	max[2] = npc1Pos[2] + 70;
 
+	//hp
 	FnBillboard npc1_hpboard;
 	npc1_hpboard.ID(npc1_hpboardid);
 	float npc1_hpsize[2] = { 50, 5 };
+
+	FnAudio npcishit_sound;
 
 	CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !npc1_AlreadyHit && CurPoseID != npc1_DieID )
 	{
 		npc1_AlreadyHit = true;
 		npc1_HealthPoints -= 20;
+		
+		
 
 		//hp 's picture is shorter
 		npc1_hpsize[0] = npc1_hpsize[0] * npc1_HealthPoints / 100;
@@ -1467,6 +1534,9 @@ void isNPCHit()
 		else{
 			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
 		}
+
+		//sound
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 
 	}
 
@@ -1500,7 +1570,17 @@ void isNPCHit()
 		else{
 			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
 		}
+		//sound 
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 	}
 
 }
 
+void playmusic(FnAudio music, char *filename){
+
+
+	music.ID(FyCreateAudio());
+	music.Load(filename);
+	music.Play(ONCE);
+
+}
