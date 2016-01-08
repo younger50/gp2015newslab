@@ -64,6 +64,7 @@ void isNPCHit();
 
 void playmusic(FnAudio,char *);
 void NPCattackActor(CHARACTERid npcID);
+int NPCcollideToOther();
 
 
 
@@ -484,8 +485,9 @@ void GameAI(int skip)
 			}
 		}
 	}
-	else if (CurPoseID == DieID)
-	{
+
+	else if (CurPoseID == DieID){
+
 		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
 	}
 
@@ -1049,6 +1051,13 @@ Node* NPCmovement(CHARACTERid npcID)
 					continue;
 				}
 			}
+			/*
+			else if (NPCcollideToOther(neighbor->pos)){
+				// collide to other NPC
+				free(neighbor);
+				continue;
+			}
+			*/
 
 			// check OPEN & CLOSED list
 			// if n' in OPEN list and not better, continue
@@ -1442,11 +1451,16 @@ void isNPCHit()
 
 }
 
-void playmusic(FnAudio music,char *filename){
-	
+
+void playmusic(FnAudio music, char *filename){
+
 
 	music.ID(FyCreateAudio());
 	music.Load(filename);
 	music.Play(ONCE);
 
+}
+int NPCcollideToOther()
+{
+	return 0;
 }
