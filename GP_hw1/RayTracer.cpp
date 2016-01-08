@@ -39,5 +39,6 @@ bool RayTracer::isInterset(float* rayOrigin, float* rayDir, float t0, float t1, 
 		tmin = tzmin;
 	if (tzmax < tmax)
 		tmax = tzmax;
-	return ((tmin < t1) && (tmax > t0));
+	return ((tmin < t1) && (tmax > t0));
+
 }
