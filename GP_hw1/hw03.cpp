@@ -221,7 +221,7 @@ void FyMain(int argc, char **argv)
 	fcobj.Show(FALSE);
 	//fcobj.SetOpacity(0.5);
 	fcobj.SetAlphaFlag(TRUE);
-	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\f1", 0);
+	fcbid = fcobj.Billboard(NULL, fcsize, "Data\\NTU6\\FXhw\\f1", 0);
 
 	// create a new game FX system
 	lyfxID = scene.CreateGameFXSystem();
@@ -1132,6 +1132,15 @@ void ActorAttack(BYTE code, BOOL4 value)
 			actor.GetDirection(fdir, udir);
 			gfx.Load("mod_Lyubu_atk01", TRUE);
 			dummy.SetPosition(pos);
+			// force rotate slash fx to match last hit in ultimate attack 
+			float ddir[3];
+			cross3(ddir, fdir, udir);
+			udir[0] += ddir[0] * 1;
+			udir[1] += ddir[1] * 1;
+			cross3(ddir, udir, fdir);
+			fdir[0] += ddir[0] * 1;
+			fdir[1] += ddir[1] * 1;
+			fdir[2] += ddir[2] * 1;
 			dummy.SetDirection(fdir, udir);
 		}
 	}
