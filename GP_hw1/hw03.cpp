@@ -456,7 +456,21 @@ void GameAI(int skip)
 	}
 	else if (CurPoseID == RightDamageID || CurPoseID == DieID)
 	{
-		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
+		if (!actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE)){
+			if (isCombo)
+			{
+				actor.SetCurrentAction(NULL, 0, NextAttackID);
+				isCombo = false;
+			}
+			else{// recovery the pervious state 
+				if (stack <= 0){
+					actor.SetCurrentAction(NULL, 0, IdleID);
+				}
+				else{
+					actor.SetCurrentAction(NULL, 0, RunID);
+				}
+			}
+		}
 	}
 
 	//==============================================
@@ -509,7 +523,7 @@ void GameAI(int skip)
 
 		//attack cool down
 		npc1_attack_counter++;
-		npc1_attack_counter %= (int)(30 * npc1_attackrate);
+		npc1_attack_counter %= (int)(30 / npc1_attackrate);
 		NPCattackActor(npc1ID);
 
 	}
@@ -560,7 +574,7 @@ void GameAI(int skip)
 		
 		//attack cool down
 		npc2_attack_counter++;
-		npc2_attack_counter %= (int)(30 * npc2_attackrate);
+		npc2_attack_counter %= (int)(30 / npc2_attackrate);
 		NPCattackActor(npc2ID);
 
 
@@ -1014,7 +1028,7 @@ Node* NPCmovement(CHARACTERid npcID)
 			hitray[2] = n->pos[2] - neighbor->pos[2];
 			if (terrain.HitTest(n->pos, hitray, hitpos) > 0){
 				if (dist3(n->pos, hitpos) < dist3(n->pos, neighbor->pos)){
-					// collide!!
+					// collide to wall
 					free(neighbor);
 					continue;
 				}
