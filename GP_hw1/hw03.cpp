@@ -726,20 +726,23 @@ void GameAI(int skip)
 	if (CurPoseID == RunID){
 		if (FyCheckHotKeyStatus(FY_UP)) {
 			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			Camera3PersonView(0);
 		}
 
 		if (FyCheckHotKeyStatus(FY_LEFT)) {
 			actor.TurnRight(-rotate);
+			Camera3PersonView(0);
 		}
 
 		if (FyCheckHotKeyStatus(FY_RIGHT)) {
 			actor.TurnRight(rotate);
+			Camera3PersonView(0);
 		}
 
 		if (FyCheckHotKeyStatus(FY_DOWN)) {
-			actor.MoveForward(-speed / 2, TRUE, FALSE, 0.0f, TRUE);
+			actor.MoveForward(speed, TRUE, FALSE, 0.0f, TRUE);
+			Camera3PersonView(pi);
 		}
-		Camera3PersonView(0);
 		CameraCollision();
 	}
 	// idle logic
@@ -993,6 +996,15 @@ else {
 	CurPoseID = RunID;
 	actor.SetCurrentAction(NULL, 0, CurPoseID);
 	actor.Play(START, 0.0f, FALSE, TRUE);
+
+	if (code == FY_DOWN){
+		float fDir[3], uDir[3];
+		actor.GetDirection(fDir, uDir);
+		fDir[0] = -fDir[0];
+		fDir[1] = -fDir[1];
+		actor.SetDirection(fDir, uDir);
+	}
+
 }
 }
 
