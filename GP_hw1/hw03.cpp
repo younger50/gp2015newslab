@@ -45,6 +45,8 @@ ACTIONid HeavyAttack1ID, HeavyAttack2ID, HeavyAttack3ID;
 ACTIONid UltimateAttackID;
 ACTIONid GuardID;
 ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
+int actor_HealthPoints = 100;
+bool actor_AlreadyHit = false;
 
 unsigned int AttackRange = 100;
 float AttackRadius = 1.0f;
@@ -55,6 +57,7 @@ ACTIONid NextAttackID;
 void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
+void NPCattackActor(CHARACTERid npcID);
 
 
 // npc1 = Donzo
@@ -67,6 +70,7 @@ int npc1_HealthPoints = 100;
 float npc1_attackrate = 0.5f;
 int npc1_attack_counter = 0;
 bool npc1_AlreadyHit = false;
+
 bool npc1_running = false,npc1_canAttack = false;
 
 
@@ -150,7 +154,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -408,10 +412,15 @@ void GameAI(int skip)
 	float speed = 10.0f;
 	float rotate = 5.0f;
 
-	// play character pose
 	actor.ID(actorID);
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
+
+
+	//==============================================
+	//				character pose 
+	//==============================================
+	// play character pose
 	CurPoseID = actor.GetCurrentAction(NULL);
 	//sprintf(debugbuf, "skill op %d", CurPoseID);
 	if (CurPoseID == IdleID || CurPoseID == RunID)
@@ -445,8 +454,14 @@ void GameAI(int skip)
 			}
 		}
 	}
+	else if (CurPoseID == RightDamageID || CurPoseID == DieID)
+	{
+		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
+	}
 
-	// npc AI
+	//==============================================
+	//					NPC ai 	
+	//==============================================
 	if (npc1_HealthPoints != 0){
 		// movement
 		float curFDir[3];
@@ -491,9 +506,12 @@ void GameAI(int skip)
 				pre = pre->parent;
 			}
 		}
+
 		//attack cool down
 		npc1_attack_counter++;
 		npc1_attack_counter %= (int)(30 * npc1_attackrate);
+		//NPCattackActor(npc1ID);
+
 	}
 	if (npc2_HealthPoints != 0){
 		// movement
@@ -539,12 +557,18 @@ void GameAI(int skip)
 				pre = pre->parent;
 			}
 		}
+		
 		//attack cool down
 		npc2_attack_counter++;
 		npc2_attack_counter %= (int)(30 * npc2_attackrate);
+		NPCattackActor(npc2ID);
+
+
 	}
 
-	// special skill camera
+	//==============================================
+	//			character special skill camera 
+	//==============================================
 	// count how many step left and devide the camera rotate
 	CurPoseID = actor.GetCurrentAction(NULL);
 	FnObject fcobj;
@@ -571,6 +595,7 @@ void GameAI(int skip)
 		if (npc1_canAttack){
 			if (npc1_attack_counter == 0){
 				npc1.SetCurrentAction(NULL, 0, npc1_NormalAttack1ID);
+				actor_AlreadyHit = false;
 			}
 		}
 	}
@@ -837,7 +862,7 @@ void RenderIt(int skip)
 	char actorPosS[256], weaponPosS[256], npctatus[256];
 	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
 	sprintf(weaponPosS, "weapon pos: %d %8.3f %8.3f", nodelist.size(), weaponPos[1], weaponPos[2]);
-	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d ", npc1_HealthPoints, npc2_HealthPoints);
+	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d  / actor Life: %d", npc1_HealthPoints, npc2_HealthPoints, actor_HealthPoints);
 
 
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
@@ -1218,6 +1243,64 @@ void ZoomCam(int x, int y)
 	}
 }
 
+void NPCattackActor(CHARACTERid npcID)
+{
+	FnCharacter actor, npc;
+	FnObject npcWeapon, npcHand;
+	float weaponPos[3], handPos[3], npcPos[3];
+	float actorPos[3];
+	float ray[3];
+	float min[3];
+	float max[3];
+
+	actor.ID(actorID);
+	npc.ID(npcID);
+
+	npcWeapon.ID(npc.GetBoneObject("Weapon01"));
+	npcWeapon.GetPosition(weaponPos);
+
+	npcHand.ID(npc.GetBoneObject("Bip01_R_Hand"));
+	npcHand.GetPosition(handPos);
+
+	actor.GetPosition(actorPos);
+	npc.GetPosition(npcPos);
+
+	ray[0] = weaponPos[0] - handPos[0];
+	ray[1] = weaponPos[1] - handPos[1];
+	ray[2] = weaponPos[2] - handPos[2];
+
+	min[0] = actorPos[0] - 30;
+	min[1] = actorPos[1] - 30;
+	min[2] = actorPos[2];
+
+	max[0] = actorPos[0] + 30;
+	max[1] = actorPos[1] + 30;
+	max[2] = actorPos[2] + 70;
+
+	FnBillboard actor_hpboard;
+	actor_hpboard.ID(actor_hpboardid);
+	float actor_hpsize[2] = { 50, 5 };
+
+	CurPoseID = actor.GetCurrentAction(NULL, 0);
+	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !actor_AlreadyHit && CurPoseID != DieID)
+	{
+		actor_AlreadyHit = true;
+		actor_HealthPoints -= 20;
+
+		//hp 's picture is shorter
+		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
+		actor_hpboard.SetPositionSize(NULL, actor_hpsize);
+
+		if (actor_HealthPoints <= 0)
+		{
+			actor.SetCurrentAction(NULL, 0, DieID);
+		}
+		else{
+			actor.SetCurrentAction(NULL, 0, RightDamageID);
+		}
+	}
+}
+
 void isNPCHit()
 {
 	FnCharacter actor;
@@ -1249,12 +1332,12 @@ void isNPCHit()
 	ray[1] = weaponPos[1] - handPos[1];
 	ray[2] = weaponPos[2] - handPos[2];
 
-	min[0] = npc1Pos[0] - 20;
-	min[1] = npc1Pos[1] - 20;
+	min[0] = npc1Pos[0] - 30;
+	min[1] = npc1Pos[1] - 30;
 	min[2] = npc1Pos[2];
 
-	max[0] = npc1Pos[0] + 20;
-	max[1] = npc1Pos[1] + 20;
+	max[0] = npc1Pos[0] + 30;
+	max[1] = npc1Pos[1] + 30;
 	max[2] = npc1Pos[2] + 70;
 
 	FnBillboard npc1_hpboard;
@@ -1281,12 +1364,12 @@ void isNPCHit()
 
 	}
 
-	min[0] = npc2Pos[0] - 20;
-	min[1] = npc2Pos[1] - 20;
+	min[0] = npc2Pos[0] - 30;
+	min[1] = npc2Pos[1] - 30;
 	min[2] = npc2Pos[2];
 
-	max[0] = npc2Pos[0] + 20;
-	max[1] = npc2Pos[1] + 20;
+	max[0] = npc2Pos[0] + 30;
+	max[1] = npc2Pos[1] + 30;
 	max[2] = npc2Pos[2] + 70;
 
 
