@@ -30,6 +30,10 @@ int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
 CHARACTERid npc1ID, npc2ID;		// the npc character
 
+//sound
+AUDIOid background_sound_id;
+
+
 //hp
 OBJECTid actor_hpid,npc1_hpid, npc2_hpid;
 GEOMETRYid actor_hpboardid,npc1_hpboardid,npc2_hpboardid;
@@ -48,6 +52,8 @@ ACTIONid HeavyAttack1ID, HeavyAttack2ID, HeavyAttack3ID;
 ACTIONid UltimateAttackID;
 ACTIONid GuardID;
 ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
+int actor_HealthPoints = 100;
+bool actor_AlreadyHit = false;
 
 unsigned int AttackRange = 100;
 float AttackRadius = 1.0f;
@@ -58,6 +64,11 @@ ACTIONid NextAttackID;
 void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
+
+void playmusic(FnAudio,char *);
+void NPCattackActor(CHARACTERid npcID);
+int NPCcollideToOther();
+
 
 
 // npc1 = Donzo
@@ -70,6 +81,7 @@ int npc1_HealthPoints = 100;
 float npc1_attackrate = 0.5f;
 int npc1_attack_counter = 0;
 bool npc1_AlreadyHit = false;
+
 bool npc1_running = false,npc1_canAttack = false;
 
 
@@ -153,7 +165,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -248,12 +260,19 @@ void FyMain(int argc, char **argv)
 	*/
 	
 	FySetScenePath("Data\\NTU6\\Scenes");
-	
-
-
+	FySetAudioPath("Data\\NTU6\\Media");
 	
 	
+	FnAudio background_sound;
 
+	background_sound.ID(FyCreateAudio());
+	background_sound.Load("MUSIC_fogforest");
+
+	//background_sound.SetVolume(100.0f);
+	background_sound.Play(LOOP);
+	
+	
+	
 	// put the character on terrain
 	float pos[3], fDir[3], uDir[3];
 	FnCharacter actor;
@@ -264,6 +283,7 @@ void FyMain(int argc, char **argv)
 	actor.SetDirection(fDir, uDir);
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = actor.PutOnTerrain(pos);
+
 
 	
 
@@ -416,10 +436,18 @@ void GameAI(int skip)
 	float speed = 10.0f;
 	float rotate = 5.0f;
 
+
 	// play character pose
+
 	actor.ID(actorID);
 	npc1.ID(npc1ID);
 	npc2.ID(npc2ID);
+
+
+	//==============================================
+	//				character pose 
+	//==============================================
+	// play character pose
 	CurPoseID = actor.GetCurrentAction(NULL);
 	//sprintf(debugbuf, "skill op %d", CurPoseID);
 	if (CurPoseID == IdleID || CurPoseID == RunID)
@@ -453,9 +481,25 @@ void GameAI(int skip)
 			}
 		}
 	}
+	else if (CurPoseID == RightDamageID)
+	{
+		if (!actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE)){
+			// recovery the pervious state 
+			if (stack <= 0){
+				actor.SetCurrentAction(NULL, 0, IdleID);
+			}
+			else{
+				actor.SetCurrentAction(NULL, 0, RunID);
+			}
+		}
+	}
+	else if (CurPoseID == DieID){
+
+		actor.Play(ONCE, (float)skip, FALSE, TRUE, TRUE);
+	}
 
 	// special skill effect
-	// count how many step left and rotate camera 
+	// count how many step left, rotate camera and show slash effect
 	CurPoseID = actor.GetCurrentAction(NULL);
 	FnObject fcobj;
 	fcobj.ID(fcid);
@@ -484,7 +528,9 @@ void GameAI(int skip)
 		fcobj.Show(FALSE);
 	}
 	
-	// npc AI
+	//==============================================
+	//					NPC ai 	
+	//==============================================
 	if (npc1_HealthPoints != 0){
 		// movement
 		float curFDir[3];
@@ -529,9 +575,12 @@ void GameAI(int skip)
 				pre = pre->parent;
 			}
 		}
+
 		//attack cool down
 		npc1_attack_counter++;
-		npc1_attack_counter %= (int)(30 * npc1_attackrate);
+		npc1_attack_counter %= (int)(30 / npc1_attackrate);
+		NPCattackActor(npc1ID);
+
 	}
 	if (npc2_HealthPoints != 0){
 		// movement
@@ -577,9 +626,13 @@ void GameAI(int skip)
 				pre = pre->parent;
 			}
 		}
+		
 		//attack cool down
 		npc2_attack_counter++;
-		npc2_attack_counter %= (int)(30 * npc2_attackrate);
+		npc2_attack_counter %= (int)(30 / npc2_attackrate);
+		NPCattackActor(npc2ID);
+
+
 	}
 
 	npc1_CurPoseID = npc1.GetCurrentAction(NULL, 0);
@@ -592,6 +645,7 @@ void GameAI(int skip)
 		if (npc1_canAttack){
 			if (npc1_attack_counter == 0){
 				npc1.SetCurrentAction(NULL, 0, npc1_NormalAttack1ID);
+				actor_AlreadyHit = false;
 			}
 		}
 	}
@@ -860,7 +914,7 @@ void RenderIt(int skip)
 	char actorPosS[256], weaponPosS[256], npctatus[256];
 	sprintf(actorPosS, "actor pos: %8.3f %8.3f %8.3f", actorPos[0], actorPos[1], actorPos[2]);
 	sprintf(weaponPosS, "weapon pos: %d %8.3f %8.3f", nodelist.size(), weaponPos[1], weaponPos[2]);
-	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d ", npc1_HealthPoints, npc2_HealthPoints);
+	sprintf(npctatus, "NPC1 Life: %d  /  NPC2 Life: %d  / actor Life: %d", npc1_HealthPoints, npc2_HealthPoints, actor_HealthPoints);
 
 
 	text.Write(actorPosS, 20, 80, 255, 255, 0);
@@ -1012,11 +1066,18 @@ Node* NPCmovement(CHARACTERid npcID)
 			hitray[2] = n->pos[2] - neighbor->pos[2];
 			if (terrain.HitTest(n->pos, hitray, hitpos) > 0){
 				if (dist3(n->pos, hitpos) < dist3(n->pos, neighbor->pos)){
-					// collide!!
+					// collide to wall
 					free(neighbor);
 					continue;
 				}
 			}
+			/*
+			else if (NPCcollideToOther(neighbor->pos)){
+				// collide to other NPC
+				free(neighbor);
+				continue;
+			}
+			*/
 
 			// check OPEN & CLOSED list
 			// if n' in OPEN list and not better, continue
@@ -1259,6 +1320,68 @@ void ZoomCam(int x, int y)
 	}
 }
 
+void NPCattackActor(CHARACTERid npcID)
+{
+	FnCharacter actor, npc;
+	FnObject npcWeapon, npcHand;
+	float weaponPos[3], handPos[3], npcPos[3];
+	float actorPos[3];
+	float ray[3];
+	float min[3];
+	float max[3];
+
+	actor.ID(actorID);
+	npc.ID(npcID);
+
+	npcWeapon.ID(npc.GetBoneObject("Weapon01"));
+	npcWeapon.GetPosition(weaponPos);
+
+	npcHand.ID(npc.GetBoneObject("Bip01_R_Hand"));
+	npcHand.GetPosition(handPos);
+
+	actor.GetPosition(actorPos);
+	npc.GetPosition(npcPos);
+
+	ray[0] = weaponPos[0] - handPos[0];
+	ray[1] = weaponPos[1] - handPos[1];
+	ray[2] = weaponPos[2] - handPos[2];
+
+	min[0] = actorPos[0] - 30;
+	min[1] = actorPos[1] - 30;
+	min[2] = actorPos[2];
+
+	max[0] = actorPos[0] + 30;
+	max[1] = actorPos[1] + 30;
+	max[2] = actorPos[2] + 70;
+
+	FnBillboard actor_hpboard;
+	actor_hpboard.ID(actor_hpboardid);
+	float actor_hpsize[2] = { 50, 5 };
+	//sound
+	FnAudio actorishit_sound;
+
+	CurPoseID = actor.GetCurrentAction(NULL, 0);
+	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !actor_AlreadyHit && CurPoseID != DieID)
+	{
+		actor_AlreadyHit = true;
+		actor_HealthPoints -= 5;
+
+		playmusic(actorishit_sound, "Data\\NTU6\\FX\\swordslash4");
+		
+		//hp 's picture is shorter
+		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
+		actor_hpboard.SetPositionSize(NULL, actor_hpsize);
+
+		if (actor_HealthPoints <= 0)
+		{
+			actor.SetCurrentAction(NULL, 0, DieID);
+		}
+		else if ( CurPoseID == IdleID ){
+			actor.SetCurrentAction(NULL, 0, RightDamageID);
+		}
+	}
+}
+
 void isNPCHit()
 {
 	FnCharacter actor;
@@ -1290,23 +1413,28 @@ void isNPCHit()
 	ray[1] = weaponPos[1] - handPos[1];
 	ray[2] = weaponPos[2] - handPos[2];
 
-	min[0] = npc1Pos[0] - 20;
-	min[1] = npc1Pos[1] - 20;
+	min[0] = npc1Pos[0] - 30;
+	min[1] = npc1Pos[1] - 30;
 	min[2] = npc1Pos[2];
 
-	max[0] = npc1Pos[0] + 20;
-	max[1] = npc1Pos[1] + 20;
+	max[0] = npc1Pos[0] + 30;
+	max[1] = npc1Pos[1] + 30;
 	max[2] = npc1Pos[2] + 70;
 
+	//hp
 	FnBillboard npc1_hpboard;
 	npc1_hpboard.ID(npc1_hpboardid);
 	float npc1_hpsize[2] = { 50, 5 };
+
+	FnAudio npcishit_sound;
 
 	CurPoseID = npc1.GetCurrentAction(NULL, 0);
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !npc1_AlreadyHit && CurPoseID != npc1_DieID )
 	{
 		npc1_AlreadyHit = true;
 		npc1_HealthPoints -= 20;
+		
+		
 
 		//hp 's picture is shorter
 		npc1_hpsize[0] = npc1_hpsize[0] * npc1_HealthPoints / 100;
@@ -1320,14 +1448,17 @@ void isNPCHit()
 			npc1.SetCurrentAction(NULL, 0, npc1_Damage1ID);
 		}
 
+		//sound
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
+
 	}
 
-	min[0] = npc2Pos[0] - 20;
-	min[1] = npc2Pos[1] - 20;
+	min[0] = npc2Pos[0] - 30;
+	min[1] = npc2Pos[1] - 30;
 	min[2] = npc2Pos[2];
 
-	max[0] = npc2Pos[0] + 20;
-	max[1] = npc2Pos[1] + 20;
+	max[0] = npc2Pos[0] + 30;
+	max[1] = npc2Pos[1] + 30;
 	max[2] = npc2Pos[2] + 70;
 
 
@@ -1352,7 +1483,22 @@ void isNPCHit()
 		else{
 			npc2.SetCurrentAction(NULL, 0, npc2_Damage1ID);
 		}
+		//sound 
+		playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 	}
 
 }
 
+
+void playmusic(FnAudio music, char *filename){
+
+
+	music.ID(FyCreateAudio());
+	music.Load(filename);
+	music.Play(ONCE);
+
+}
+int NPCcollideToOther()
+{
+	return 0;
+}
