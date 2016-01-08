@@ -15,6 +15,7 @@ Last Updated : 1004, 2015, Kevin C. Wang
 #include "FlyWin32.h"
 #include "RayTracer.h"
 #include <vector>
+#include <list>
 using namespace std;
 
 char debugbuf[256]; // debug UI message buffer
@@ -58,7 +59,7 @@ void PlayActorAction(int skip); // play actor action frame by frame
 
 void isNPCHit();
 void NPCattackActor(CHARACTERid npcID);
-int NPCcollideToOther();
+int NPCcollideToOther(CHARACTERid npcID, float* pos);
 
 
 // npc1 = Donzo
@@ -86,6 +87,10 @@ int npc2_attack_counter = 0;
 bool npc2_AlreadyHit = false;
 bool npc2_running = false, npc2_canAttack = false;
 
+// npcID array
+#define NPC_NUMBER 20
+CHARACTERid npcIDs[NPC_NUMBER];
+
 ROOMid terrainRoomID = FAILED_ID;
 TEXTid textID = FAILED_ID;
 
@@ -111,6 +116,7 @@ struct Node{
 };
 Node* NPCmovement(CHARACTERid npcID);
 vector<Node*> open, close, nodelist;
+list<float*> npc1_pre_pos, npc2_pre_pos;
 
 // timer callbacks
 void GameAI(int);
@@ -237,6 +243,8 @@ void FyMain(int argc, char **argv)
 	actorID = scene.LoadCharacter("Lyubu2");
 	npc1ID = scene.LoadCharacter("Donzo2");
 	npc2ID = scene.LoadCharacter("Robber02");
+	npcIDs[1] = npc1ID;
+	npcIDs[2] = npc2ID;
 	/*
 	FySetModelPath("Data\\NTU6\\NPCs");
 	FySetTexturePath("Data\\NTU6\\NPCs");
@@ -256,7 +264,7 @@ void FyMain(int argc, char **argv)
 	FnCharacter actor;
 	actor.ID(actorID);
 	pos[0] = 3569.0f; pos[1] = -3208.0f; pos[2] = 1000.0f;
-	fDir[0] = 1.0f; fDir[1] = 1.0f; fDir[2] = 0.0f;
+	fDir[0] = -1.0f; fDir[1] = -0.5f; fDir[2] = 0.0f;
 	uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
 	actor.SetDirection(fDir, uDir);
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
@@ -496,6 +504,16 @@ void GameAI(int skip)
 					npc1.SetDirection(fDir, uDir);
 					npc1_running = true;
 					npc1_canAttack = false;
+	
+					float *tem = (float *)malloc(3 * sizeof(float));
+					tem[0] = pos[0];
+					tem[1] = pos[1];
+					tem[2] = pos[2];
+					npc1_pre_pos.push_back(tem);
+					if (npc1_pre_pos.size() > 30){
+						free(npc1_pre_pos.front());
+						npc1_pre_pos.pop_front();
+					}
 				}
 				else{
 					fDir[0] = apos[0] - pos[0]; fDir[1] = apos[1] - pos[1]; fDir[2] = apos[2] - pos[2];
@@ -510,7 +528,6 @@ void GameAI(int skip)
 				open.clear();
 				close.clear();
 				nodelist.clear();
-
 				break;
 			}
 			else{
@@ -547,6 +564,16 @@ void GameAI(int skip)
 					npc2.SetDirection(fDir, uDir);
 					npc2_running = true;
 					npc2_canAttack = false;
+
+					float *tem = (float *)malloc(3 * sizeof(float));
+					tem[0] = pos[0];
+					tem[1] = pos[1];
+					tem[2] = pos[2];
+					npc2_pre_pos.push_back(tem);
+					if (npc2_pre_pos.size() > 30){
+						free(npc2_pre_pos.front());
+						npc2_pre_pos.pop_front();
+					}
 				}
 				else{
 					fDir[0] = apos[0] - pos[0]; fDir[1] = apos[1] - pos[1]; fDir[2] = apos[2] - pos[2];
@@ -1031,13 +1058,35 @@ Node* NPCmovement(CHARACTERid npcID)
 					continue;
 				}
 			}
-			/*
-			else if (NPCcollideToOther(neighbor->pos)){
-				// collide to other NPC
+			if (NPCcollideToOther(npcID, neighbor->pos))
+			{
 				free(neighbor);
 				continue;
 			}
-			*/
+			bool xflag = false;
+			list<float*>::iterator quit;
+			if (npcID == npc1ID){
+				for (quit = npc1_pre_pos.begin(); quit != npc1_pre_pos.end(); quit++){
+					if (dist3(neighbor->pos, (*quit)) < 7){
+						free(neighbor);
+						xflag = true;
+						continue;
+					}
+				}
+			}
+			else if (npcID == npc2ID){
+				for (quit = npc2_pre_pos.begin(); quit != npc2_pre_pos.end(); quit++){
+					if (dist3(neighbor->pos, (*quit)) < 7){
+						free(neighbor);
+						xflag = true;
+						continue;
+					}
+				}
+			}
+			if (xflag)
+				continue;
+
+			
 
 			// check OPEN & CLOSED list
 			// if n' in OPEN list and not better, continue
@@ -1078,7 +1127,6 @@ Node* NPCmovement(CHARACTERid npcID)
 				}
 			}
 
-			// add n as n's parent and add n' to OPEN
 			neighbor->parent = n;
 			open.push_back(neighbor);	
 			nodelist.push_back(neighbor);
@@ -1086,6 +1134,7 @@ Node* NPCmovement(CHARACTERid npcID)
 
 	}
 
+	return start;
 
 
 }
@@ -1262,6 +1311,44 @@ void ZoomCam(int x, int y)
 	}
 }
 
+int NPCcollideToOther(CHARACTERid npcID, float *pos)
+{	
+	for (int i = 1; i < 3; i++){
+		if (npcIDs[i] == npcID)
+			continue;
+		
+		FnCharacter otherNpc;
+		float otherNpc_pos[3];
+		float otherNpc_corner1[3], otherNpc_corner2[3], otherNpc_corner3[3], otherNpc_corner4[3];
+		otherNpc.ID(npcIDs[i]);
+		otherNpc.GetPosition(otherNpc_pos);
+
+		// other NPC's box
+		otherNpc_corner1[0] = otherNpc_pos[0] + 30;
+		otherNpc_corner1[1] = otherNpc_pos[1] + 30;
+		otherNpc_corner2[0] = otherNpc_pos[0] - 30;
+		otherNpc_corner2[1] = otherNpc_pos[1] + 30;
+		otherNpc_corner3[0] = otherNpc_pos[0] + 30;
+		otherNpc_corner3[1] = otherNpc_pos[1] - 30;
+		otherNpc_corner4[0] = otherNpc_pos[0] - 30;
+		otherNpc_corner4[1] = otherNpc_pos[1] - 30;
+		
+		if ((otherNpc_corner1[0] <= pos[0] + 30 && otherNpc_corner1[0] >= pos[0] - 30
+			&& otherNpc_corner1[1] <= pos[1] + 30 && otherNpc_corner1[1] >= pos[1] - 30) ||
+			(otherNpc_corner2[0] <= pos[0] + 30 && otherNpc_corner2[0] >= pos[0] - 30
+			&& otherNpc_corner2[1] <= pos[1] + 30 && otherNpc_corner2[1] >= pos[1] - 30) ||
+			(otherNpc_corner3[0] <= pos[0] + 30 && otherNpc_corner3[0] >= pos[0] - 30
+			&& otherNpc_corner3[1] <= pos[1] + 30 && otherNpc_corner3[1] >= pos[1] - 30) ||
+			(otherNpc_corner4[0] <= pos[0] + 30 && otherNpc_corner4[0] >= pos[0] - 30
+			&& otherNpc_corner4[1] <= pos[1] + 30 && otherNpc_corner4[1] >= pos[1] - 30))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 void NPCattackActor(CHARACTERid npcID)
 {
 	FnCharacter actor, npc;
@@ -1304,7 +1391,7 @@ void NPCattackActor(CHARACTERid npcID)
 	if (rayTracer.isInterset(handPos, ray, 1, 20, min, max) && !actor_AlreadyHit && CurPoseID != DieID)
 	{
 		actor_AlreadyHit = true;
-		actor_HealthPoints -= 20;
+		actor_HealthPoints -= 2;
 
 		//hp 's picture is shorter
 		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1415,10 +1502,5 @@ void isNPCHit()
 		}
 	}
 
-}
-
-int NPCcollideToOther()
-{
-	return 0;
 }
 
