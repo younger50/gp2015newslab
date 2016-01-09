@@ -1264,9 +1264,10 @@ void ActorAttack(BYTE code, BOOL4 value)
 			fdir[1] += ddir[1] * 1;
 			fdir[2] += ddir[2] * 1;
 			dummy.SetDirection(fdir, udir);
+
 			// 
 			FnAudio audobj;
-			playmusic(audobj, "Data\\NTU6\\FXhw\\samurai_shouting2");
+			playmusic(audobj, "Data\\NTU6\\Media\\lyuba_ultimate");
 		}
 	}
 }
