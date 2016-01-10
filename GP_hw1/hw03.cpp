@@ -263,10 +263,10 @@ void FyMain(int argc, char **argv)
 	FnAudio background_sound;
 
 	background_sound.ID(FyCreateAudio());
-	background_sound.Load("MUSIC_fogforest");
+	background_sound.Load("background");
 
-	//background_sound.SetVolume(100.0f);
-	//background_sound.Play(LOOP);
+	background_sound.SetVolume(0.1);
+	background_sound.Play(LOOP);
 	
 	
 	
@@ -1513,7 +1513,7 @@ void NPCattackActor(CHARACTERid npcID)
 			actor_AlreadyHit = true;
 			actor_HealthPoints -= 5;
 			//sound
-			playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",100.0f);
+			playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",0.5f);
 
 			//hp 's picture is shorter
 			actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1534,7 +1534,7 @@ void NPCattackActor(CHARACTERid npcID)
 		actor_HealthPoints -= 5;
 
 		//sound
-		playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",100.0f);
+		playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",0.5f);
 		
 		//hp 's picture is shorter
 		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1586,7 +1586,7 @@ void isNPCHitUltimate(){
 			npc_hpboard.SetPositionSize(NULL, npc_hpsize);
 
 			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\Media\\lyubu_behit", 100.0f);
+			playmusic(npcishit_sound, "Data\\NTU6\\Media\\lyubu_behit", 0.5f);
 
 		}
 
@@ -1653,10 +1653,10 @@ void isNPCHit()
 			{
 				npcChar.SetCurrentAction(NULL, 0, npc[i].DieID);
 				if (i == 1){
-					playmusic(npcishit_sound, "Data\\NTU6\\Media\\donzo_die",1000.0f);
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\donzo_die",1.0f);
 				}
 				else if (i >= 2){
-					playmusic(npcishit_sound, "Data\\NTU6\\Media\\robber_die",1000.0f);
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\robber_die",1.0f);
 
 				}
 			}
@@ -1665,7 +1665,7 @@ void isNPCHit()
 			}
 
 			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\Media\\npc_behit",100.0f);
+			playmusic(npcishit_sound, "Data\\NTU6\\Media\\npc_behit",0.5f);
 
 		}
 	}
