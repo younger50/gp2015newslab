@@ -25,16 +25,18 @@ float pi = 3.14;
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
-OBJECTid wallID;
+
 
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
 int stack = 0; // keep track of multi key press
+int pause = 0;					// game pause status
 
 FnObject Kagemusha;
 
 //sound
 AUDIOid background_sound_id;
+FnAudio audobj;
 
 
 //hp
@@ -69,7 +71,7 @@ void PlayActorAction(int skip); // play actor action frame by frame
 void isNPCHit();
 void isNPCHitUltimate();
 
-void playmusic(FnAudio,char *);
+void playmusic(FnAudio, char *, float);
 void NPCattackActor(int number);
 void NPCAttackActorRange(int number);
 int NPCcollideToOther(int number, float* pos);
@@ -98,6 +100,12 @@ void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
 void ActorDefence(BYTE, BOOL4);
 
+// menu 
+void StartMenu(int);
+void EndMenu(int);
+void EndKey(BYTE, BOOL4);
+int not_end = 1;
+
 // npc movement
 #define OPEN 0
 #define CLOSED 1
@@ -115,6 +123,8 @@ vector<Node*> open, close, nodelist;
 // timer callbacks
 void GameAI(int);
 void RenderIt(int);
+
+// camera view 
 void Camera3PersonView(float);
 
 // mouse callbacks
@@ -155,7 +165,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Final Project - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -217,6 +227,8 @@ void FyMain(int argc, char **argv)
 	lyfxID = scene.CreateGameFXSystem();
 	lyfxdumID = scene.CreateObject();
 
+	// creat menu
+
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
 	FnRoom room;
@@ -234,6 +246,7 @@ void FyMain(int argc, char **argv)
 	npc[1].ID = scene.LoadCharacter("Donzo2");
 	npc[1].name = "Donzo2";
 	npc[2].ID = scene.LoadCharacter("Robber02");
+
 	npc[2].name = "Robber02";
 	npc[3].ID = scene.LoadCharacter("Robber02");
 	npc[3].name = "Robber02";
@@ -248,7 +261,6 @@ void FyMain(int argc, char **argv)
 	npc[5].name = "CA003";
 	npc[6].ID = scene.LoadCharacter("CA004");
 	npc[6].name = "CA004";
-	
 
 	FySetScenePath("Data\\NTU6\\Scenes");
 	FySetAudioPath("Data\\NTU6\\Media");	
@@ -256,10 +268,10 @@ void FyMain(int argc, char **argv)
 	FnAudio background_sound;
 
 	background_sound.ID(FyCreateAudio());
-	background_sound.Load("MUSIC_fogforest");
+	background_sound.Load("background");
 
-	//background_sound.SetVolume(100.0f);
-	//background_sound.Play(LOOP);
+	background_sound.SetVolume(0.1);
+	background_sound.Play(LOOP);
 	
 	
 	
@@ -440,7 +452,7 @@ void FyMain(int argc, char **argv)
 	uDir[0] = -0.116f; uDir[1] = -0.031f; uDir[2] = 0.993f;
 	camera.SetPosition(pos);
 	camera.SetDirection(fDir, uDir);
-	Camera3PersonView(TRUE); // default face back
+	Camera3PersonView(0); // default face back
 
 	// light
 	float mainLightPos[3] = { -4579.0, -714.0, 15530.0 };
@@ -470,8 +482,10 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_DOWN, Movement, FALSE);	 // Down for moving back
 	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
-	FyDefineHotKey(FY_C, ActorAttack, FALSE);	 // Ultimate Attack
+	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
 	FyDefineHotKey(FY_SPACE, ActorDefence, FALSE);    // Defand
+
+	FyDefineHotKey(FY_P, EndKey, FALSE); // Pause main game 
 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
@@ -479,10 +493,11 @@ void FyMain(int argc, char **argv)
 	FyBindMouseFunction(RIGHT_MOUSE, InitMove, MoveCam, NULL, NULL);
 
 	// bind timers, frame rate = 30 fps
-	FyBindTimer(0, 30.0f, GameAI, TRUE);
-	FyBindTimer(1, 30.0f, RenderIt, TRUE);
-	FyBindTimer(2, 30.0f, projectileUpdate, TRUE);
-
+	//FyBindTimer(0, 30.0f, GameAI, TRUE);
+	//FyBindTimer(1, 30.0f, RenderIt, TRUE);
+	//FyBindTimer(2, 30.0f, projectileUpdate, TRUE);
+	// start from menu
+	FyBindTimer(5, 30.0f, StartMenu, TRUE);
 	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
@@ -904,6 +919,12 @@ void RenderIt(int skip)
 		frame = 0;
 	}
 	//sprintf(debugbuf,"frame %d", frame);
+	if (audobj.IsPlaying()){
+		sprintf(debugbuf, "play");
+	}
+	else if (!(audobj.IsPlaying())){
+		sprintf(debugbuf, "no play");
+	}
 
 	FnText text;
 	text.ID(textID);
@@ -979,9 +1000,113 @@ void RenderIt(int skip)
 	fcpos[2] = pos[2] + fDir[2] * fcdis;
 	fcobj.SetPosition(fcpos);
 
-
 	// swap buffer
 	FySwapBuffers();
+}
+
+void StartMenu(int skip){
+	// show menu background picture
+	FnScene scene(sID);
+	FnObject bgobj;
+	OBJECTid bgID;
+	float bgsize[2] = { 120, 90 };
+	float bgpos[3];
+	float bgdis = 270;
+	bgID = scene.CreateObject(OBJECT);
+	bgobj.ID(bgID);
+	bgobj.Show(TRUE);
+	bgobj.Billboard(NULL, bgsize, "Data\\NTU6\\Menu\\menu_background", 0);
+	// abjust  position
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	bgpos[0] = pos[0] + fdir[0] * bgdis;
+	bgpos[1] = pos[1] + fdir[1] * bgdis;
+	bgpos[2] = pos[2] + fdir[2] * bgdis;
+	bgobj.SetPosition(bgpos);
+	// show menu start word
+	FnObject swobj;
+	OBJECTid swID;
+	float swsize[2] = { 120, 90 };
+	float swpos[3];
+	float swdis = 250;
+	swID = scene.CreateObject(OBJECT);
+	swobj.ID(swID);
+	swobj.SetAlphaFlag(TRUE);
+	swobj.Show(TRUE);
+	swobj.Billboard(NULL, swsize, "Data\\NTU6\\Menu\\start", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	swpos[0] = pos[0] + fdir[0] * swdis;
+	swpos[1] = pos[1] + fdir[1] * swdis;
+	swpos[2] = pos[2] + fdir[2] * swdis;
+	swobj.SetPosition(swpos);
+
+	// render the whole scene
+	FnViewport vp;
+	vp.ID(vID);
+	vp.Render3D(cID, TRUE, TRUE);
+	// swap buffer
+	FySwapBuffers();
+
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		// start from menu
+		FyBindTimer(5, 0.0f, NULL, TRUE);
+		// bind main game timers, frame rate = 30 fps
+		FyBindTimer(0, 30.0f, GameAI, TRUE);
+		FyBindTimer(1, 30.0f, RenderIt, TRUE);
+		FyBindTimer(2, 30.0f, projectileUpdate, TRUE);
+	}
+
+	// clear menu
+	scene.DeleteObject(bgID);
+	// clear word
+	scene.DeleteObject(swID);
+}
+
+OBJECTid ewID;
+void init_EndMenu(){
+	FnScene scene(sID);
+	ewID = scene.CreateObject(OBJECT);
+}
+
+void EndMenu(int skip){
+
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	// show menu end word
+	FnObject ewobj;
+	float ewsize[2] = { 120, 90 };
+	float ewpos[3];
+	float ewdis = 250;
+	ewobj.ID(ewID);
+	ewobj.SetAlphaFlag(TRUE);
+	ewobj.Show(TRUE);
+	ewobj.Billboard(NULL, ewsize, "Data\\NTU6\\Menu\\end", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	ewpos[0] = pos[0] + fdir[0] * ewdis;
+	ewpos[1] = pos[1] + fdir[1] * ewdis;
+	ewpos[2] = pos[2] + fdir[2] * ewdis;
+	ewobj.SetPosition(ewpos);
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		FyQuitFlyWin32();
+	}
+}
+
+void EndKey(BYTE code, BOOL4 value)
+{
+	if (value && not_end == 1) {
+		not_end = 0;
+		// init end menu and keep show it in camera
+		init_EndMenu();
+		FyBindTimer(5, 60.0f, EndMenu, TRUE);
+	}
 }
 
 void projectileUpdate(int skip)
@@ -1034,7 +1159,7 @@ void projectileUpdate(int skip)
 					actor_AlreadyHit = true;
 					actor_HealthPoints -= 5;
 
-					playmusic(actorishit_sound, "Data\\NTU6\\FX\\swordslash4");
+					playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit", 0.5f);
 
 					//hp 's picture is shorter
 					actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1043,6 +1168,7 @@ void projectileUpdate(int skip)
 					if (actor_HealthPoints <= 0)
 					{
 						actor.SetCurrentAction(NULL, 0, DieID);
+						playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
 					}
 					else if (CurPoseID == GuardID){
 						actor.SetCurrentAction(NULL, 0, RightDamageID);
@@ -1055,7 +1181,7 @@ void projectileUpdate(int skip)
 				actor_HealthPoints -= 5;
 
 				//sound
-				playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit");
+				playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit", 0.5f);
 
 				//hp 's picture is shorter
 				actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1064,6 +1190,7 @@ void projectileUpdate(int skip)
 				if (actor_HealthPoints <= 0)
 				{
 					actor.SetCurrentAction(NULL, 0, DieID);
+					playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
 				}
 				else if (CurPoseID == IdleID){
 					actor.SetCurrentAction(NULL, 0, RightDamageID);
@@ -1293,6 +1420,7 @@ void ActorAttack(BYTE code, BOOL4 value)
 	for (int i = 1; i <= NPC_NUMBER; i++){
 		npc[i].AlreadyBeenHit = false;
 	}
+	
 	FnCharacter actor;
 	actor.ID(actorID);
 	CurPoseID = actor.GetCurrentAction(NULL, 0);
@@ -1361,11 +1489,20 @@ void ActorAttack(BYTE code, BOOL4 value)
 			fdir[2] += ddir[2] * 1;
 			dummy.SetDirection(fdir, udir);
 
+			
 			// sound
-			FnAudio audobj;
-			playmusic(audobj, "Data\\NTU6\\Media\\lyubu_ultimate");
+
+			if (!audobj.IsPlaying()){
+				audobj.ID(FyCreateAudio());
+				audobj.Load("Data\\NTU6\\Media\\lyubu_ultimate");
+				audobj.SetVolume(200.0f);
+				audobj.Play(ONCE);
+
+			}
+			
 			
 		}
+		
 	}
 }
 
@@ -1385,7 +1522,6 @@ void ActorDefence(BYTE code, BOOL4 value)
 		}
 	}
 }
-
 
 /*------------------
 quit the demo
@@ -1601,8 +1737,8 @@ void NPCattackActor(int number)
 		else{
 			actor_AlreadyHit = true;
 			actor_HealthPoints -= 5;
-
-			playmusic(actorishit_sound, "Data\\NTU6\\FX\\swordslash4");
+			//sound
+			playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",0.5f);
 
 			//hp 's picture is shorter
 			actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1611,6 +1747,7 @@ void NPCattackActor(int number)
 			if (actor_HealthPoints <= 0)
 			{
 				actor.SetCurrentAction(NULL, 0, DieID);
+				playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
 			}
 			else if (CurPoseID == GuardID){
 				actor.SetCurrentAction(NULL, 0, RightDamageID);
@@ -1623,7 +1760,7 @@ void NPCattackActor(int number)
 		actor_HealthPoints -= 5;
 
 		//sound
-		playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit");
+		playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit",0.5f);
 		
 		//hp 's picture is shorter
 		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
@@ -1632,6 +1769,8 @@ void NPCattackActor(int number)
 		if (actor_HealthPoints <= 0)
 		{
 			actor.SetCurrentAction(NULL, 0, DieID);
+			playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
+
 		}
 		else if (CurPoseID == IdleID){
 			actor.SetCurrentAction(NULL, 0, RightDamageID);
@@ -1685,8 +1824,6 @@ void isNPCHitUltimate(){
 		CurPoseID = npcChar.GetCurrentAction(NULL, 0);
 		if (sqrt(dist3(pos, apos)) < 200 && ((int)skill_camera_timer % 5 == 0) && CurPoseID != npc[i].DieID){
 			npcChar.SetCurrentAction(NULL, 0, npc[i].Damage1ID);
-			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
 		}
 
 		if (sqrt(dist3(pos, apos)) < 200 && !npc[i].AlreadyBeenHit && CurPoseID != npc[i].DieID && skill_camera_timer > 95){
@@ -1704,7 +1841,7 @@ void isNPCHitUltimate(){
 			npc_hpboard.SetPositionSize(NULL, npc_hpsize);
 
 			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
+			playmusic(npcishit_sound, "Data\\NTU6\\Media\\lyubu_behit", 0.5f);
 
 		}
 
@@ -1771,10 +1908,10 @@ void isNPCHit()
 			{
 				npcChar.SetCurrentAction(NULL, 0, npc[i].DieID);
 				if (i == 1){
-					playmusic(npcishit_sound, "Data\\NTU6\\Media\\donzo_die");
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\donzo_die",1.0f);
 				}
-				else if (i == 2){
-					playmusic(npcishit_sound, "Data\\NTU6\\Media\\robber_die");
+				else if (i >= 2){
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\robber_die",1.0f);
 
 				}
 			}
@@ -1783,17 +1920,18 @@ void isNPCHit()
 			}
 
 			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\Media\\npc_behit");
+			playmusic(npcishit_sound, "Data\\NTU6\\Media\\npc_behit",0.5f);
 
 		}
 	}
 }
 
-void playmusic(FnAudio music, char *filename){
+void playmusic(FnAudio music, char *filename,float v){
 
 
 	music.ID(FyCreateAudio());
 	music.Load(filename);
+	music.SetVolume(v);
 	music.Play(ONCE);
 
 }
