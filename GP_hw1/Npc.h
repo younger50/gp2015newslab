@@ -41,8 +41,11 @@ public:
 	// npc attack
 	float attackrate = 0.3f;
 	int attack_counter = 0;
+	int attack_range;
 	bool AlreadyBeenHit = false;
 	bool running = false, canAttack = false;
+	string attackType;
+	char attack_special[256];
 };
 
 #endif
