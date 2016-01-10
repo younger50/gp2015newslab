@@ -92,7 +92,11 @@ void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
 void ActorDefence(BYTE, BOOL4);
 
-void PauseGame(BYTE, BOOL4);
+// menu 
+void StartMenu(int);
+void EndMenu(int);
+void EndKey(BYTE, BOOL4);
+int not_end = 1;
 
 // npc movement
 #define OPEN 0
@@ -114,9 +118,6 @@ void RenderIt(int);
 
 // camera view 
 void Camera3PersonView(float);
-
-// pause
-void RenderPause(int);
 
 // mouse callbacks
 void InitPivot(int, int);
@@ -431,8 +432,9 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
 	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
-	FyDefineHotKey(FY_P, PauseGame, FALSE); // Pause main game 
 	FyDefineHotKey(FY_SPACE, ActorDefence, FALSE);    // Defand
+
+	FyDefineHotKey(FY_P, EndKey, FALSE); // Pause main game 
 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
@@ -440,9 +442,10 @@ void FyMain(int argc, char **argv)
 	FyBindMouseFunction(RIGHT_MOUSE, InitMove, MoveCam, NULL, NULL);
 
 	// bind timers, frame rate = 30 fps
-	FyBindTimer(0, 30.0f, GameAI, TRUE);
-	FyBindTimer(1, 30.0f, RenderIt, TRUE);
-	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
+	//FyBindTimer(0, 30.0f, GameAI, TRUE);
+	//FyBindTimer(1, 30.0f, RenderIt, TRUE);
+	// start from menu
+	FyBindTimer(5, 30.0f, StartMenu, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
 }
@@ -929,8 +932,7 @@ void RenderIt(int skip)
 	FySwapBuffers();
 }
 
-// render pause menu
-void RenderPause(int skip){	
+void StartMenu(int skip){
 	// show menu background picture
 	FnScene scene(sID);
 	FnObject bgobj;
@@ -951,18 +953,90 @@ void RenderPause(int skip){
 	bgpos[1] = pos[1] + fdir[1] * bgdis;
 	bgpos[2] = pos[2] + fdir[2] * bgdis;
 	bgobj.SetPosition(bgpos);
+	// show menu start word
+	FnObject swobj;
+	OBJECTid swID;
+	float swsize[2] = { 120, 90 };
+	float swpos[3];
+	float swdis = 250;
+	swID = scene.CreateObject(OBJECT);
+	swobj.ID(swID);
+	swobj.SetAlphaFlag(TRUE);
+	swobj.Show(TRUE);
+	swobj.Billboard(NULL, swsize, "Data\\NTU6\\Menu\\start", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	swpos[0] = pos[0] + fdir[0] * swdis;
+	swpos[1] = pos[1] + fdir[1] * swdis;
+	swpos[2] = pos[2] + fdir[2] * swdis;
+	swobj.SetPosition(swpos);
 
 	// render the whole scene
 	FnViewport vp;
 	vp.ID(vID);
 	vp.Render3D(cID, TRUE, TRUE);
-
 	// swap buffer
 	FySwapBuffers();
 
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		// start from menu
+		FyBindTimer(5, 0.0f, NULL, TRUE);
+		// bind main game timers, frame rate = 30 fps
+		FyBindTimer(0, 30.0f, GameAI, TRUE);
+		FyBindTimer(1, 30.0f, RenderIt, TRUE);
+
+	}
+
 	// clear menu
 	scene.DeleteObject(bgID);
-};
+	// clear word
+	scene.DeleteObject(swID);
+}
+
+OBJECTid ewID;
+void init_EndMenu(){
+	FnScene scene(sID);
+	ewID = scene.CreateObject(OBJECT);
+}
+
+void EndMenu(int skip){
+
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	// show menu end word
+	FnObject ewobj;
+	float ewsize[2] = { 120, 90 };
+	float ewpos[3];
+	float ewdis = 250;
+	ewobj.ID(ewID);
+	ewobj.SetAlphaFlag(TRUE);
+	ewobj.Show(TRUE);
+	ewobj.Billboard(NULL, ewsize, "Data\\NTU6\\Menu\\end", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	ewpos[0] = pos[0] + fdir[0] * ewdis;
+	ewpos[1] = pos[1] + fdir[1] * ewdis;
+	ewpos[2] = pos[2] + fdir[2] * ewdis;
+	ewobj.SetPosition(ewpos);
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		FyQuitFlyWin32();
+	}
+}
+
+void EndKey(BYTE code, BOOL4 value)
+{
+	if (value && not_end == 1) {
+		not_end = 0;
+		// init end menu and keep show it in camera
+		init_EndMenu();
+		FyBindTimer(5, 60.0f, EndMenu, TRUE);
+	}
+}
+
 
 /*------------------
 movement control
@@ -1277,26 +1351,6 @@ void ActorDefence(BYTE code, BOOL4 value)
 		}
 		else{
 			actor.SetCurrentAction(NULL, 0, IdleID);
-		}
-	}
-}
-
-void PauseGame(BYTE code, BOOL4 value)
-{
-	if (value){
-		if (pause == 0){
-			// disable game ai and frame render function on pause
-			pause = 1;
-			FyBindTimer(0, 0.0f, NULL, TRUE);
-			FyBindTimer(1, 0.0f, NULL, TRUE);
-			FyBindTimer(5, 30.0f, RenderPause, TRUE);
-		}
-		else{
-			// resume from pause
-			pause = 0;
-			FyBindTimer(0, 30.0f, GameAI, TRUE);
-			FyBindTimer(1, 30.0f, RenderIt, TRUE);
-			FyBindTimer(5, 0.0f, NULL, TRUE);
 		}
 	}
 }
