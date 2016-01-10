@@ -23,7 +23,7 @@ float pi = 3.14;
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
-
+int pause = 0;					// game pause status
 
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
@@ -113,6 +113,7 @@ int oldX, oldY, oldXM, oldYM, oldXMM, oldYMM;
 void QuitGame(BYTE, BOOL4);
 void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
+void PauseGame(BYTE, BOOL4);
 
 // npc movement
 #define OPEN 0
@@ -402,7 +403,7 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
 	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
-
+	FyDefineHotKey(FY_P, PauseGame, FALSE); // Pause main game 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
 	FyBindMouseFunction(MIDDLE_MOUSE, InitZoom, ZoomCam, NULL, NULL);
@@ -411,7 +412,6 @@ void FyMain(int argc, char **argv)
 	// bind timers, frame rate = 30 fps
 	FyBindTimer(0, 30.0f, GameAI, TRUE);
 	FyBindTimer(1, 30.0f, RenderIt, TRUE);
-
 	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
@@ -1146,6 +1146,23 @@ void ActorAttack(BYTE code, BOOL4 value)
 	}
 }
 
+void PauseGame(BYTE code, BOOL4 value)
+{
+	if (value){
+		if (pause == 0){
+			// disable game ai and frame render function on pause
+			pause = 1;
+			FyBindTimer(0, 0.0f, NULL, TRUE);
+			FyBindTimer(1, 0.0f, NULL, TRUE);
+		}
+		else{
+			// resume from pause
+			pause = 0;
+			FyBindTimer(0, 30.0f, GameAI, TRUE);
+			FyBindTimer(1, 30.0f, RenderIt, TRUE);
+		}
+	}
+}
 
 /*------------------
 quit the demo
