@@ -23,7 +23,7 @@ float pi = 3.14;
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
-OBJECTid wallID;
+
 
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
@@ -31,7 +31,7 @@ int stack = 0; // keep track of multi key press
 
 //sound
 AUDIOid background_sound_id;
-
+FnAudio audobj;
 
 //hp
 OBJECTid actor_hpid;
@@ -254,12 +254,6 @@ void FyMain(int argc, char **argv)
 	npc[2].ID = scene.LoadCharacter("Robber02");
 
 	
-	FySetModelPath("Data\\NTU6\\NPCs");
-	FySetTexturePath("Data\\NTU6\\NPCs");
-	FySetCharacterPath("Data\\NTU6\\NPCs");
-	npc[2].ID = scene.LoadCharacter("AMA001");
-	
-	
 	
 	
 
@@ -315,11 +309,11 @@ void FyMain(int argc, char **argv)
 	IdleID = actor.GetBodyAction(NULL, "Idle");
 	RunID = actor.GetBodyAction(NULL, "Run");
 	WalkID = actor.GetBodyAction(NULL, "Walk");
-	NormalAttack1ID = actor.GetBodyAction(NULL, "NormalAttack1");
+	NormalAttack1ID = actor.GetBodyAction(NULL, "Attack");
 	NormalAttack2ID = actor.GetBodyAction(NULL, "NormalAttack2");
 	NormalAttack3ID = actor.GetBodyAction(NULL, "NormalAttack3");
 	NormalAttack4ID = actor.GetBodyAction(NULL, "NormalAttack4");
-	HeavyAttack1ID = actor.GetBodyAction(NULL, "HeavyAttack1");
+	HeavyAttack1ID = actor.GetBodyAction(NULL, "Skill");
 	HeavyAttack2ID = actor.GetBodyAction(NULL, "HeavyAttack2");
 	HeavyAttack3ID = actor.GetBodyAction(NULL, "HeavyAttack3");
 	UltimateAttackID = actor.GetBodyAction(NULL, "UltimateAttack");
@@ -1148,8 +1142,12 @@ void ActorAttack(BYTE code, BOOL4 value)
 			dummy.SetDirection(fdir, udir);
 
 			// sound
-			FnAudio audobj;
-			playmusic(audobj, "Data\\NTU6\\Media\\lyubu_ultimate");
+			
+			if (!audobj.IsPlaying()){
+				audobj.ID(FyCreateAudio());
+				audobj.Load("Data\\NTU6\\Media\\lyubu_ultimate");
+				audobj.Play(ONCE);
+			}
 			
 		}
 	}
