@@ -286,6 +286,18 @@ void FyMain(int argc, char **argv)
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
 	beOK = actor.PutOnTerrain(pos);
 
+	float dir[3], npos[3];
+	npos[0] = pos[0] + 50;
+	npos[1] = pos[1] + 50;
+	npos[2] = pos[2];
+
+	dir[0] = pos[0] - npos[0];
+	dir[1] = pos[1] - npos[1];
+	dir[2] = 20;
+
+	Projectile* p = new Projectile(dir, 100, 20, npos, sID, "Data\\NTU6\\FX\\UltSwin");
+	projectiles.push_back(p);
+	
 	for (int i = 1; i <= NPC_NUMBER; i++){
 		float pos[3], fDir[3], uDir[3];
 		if (i == 1){
