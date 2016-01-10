@@ -23,7 +23,7 @@ float pi = 3.14;
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
-
+OBJECTid wallID;
 
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
@@ -202,13 +202,15 @@ void FyMain(int argc, char **argv)
 	terrain.Show(FALSE);
 
 
+	
+	
 	//lyubu's hp
 	float actor_hpsize[2] = { 50, 5 };
 	FnObject actor_hpobj;
 	actor_hpid = scene.CreateObject(OBJECT);
 	actor_hpobj.ID(actor_hpid);
 	actor_hpobj.Show(TRUE);
-	actor_hpboardid = actor_hpobj.Billboard(NULL, actor_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
+	actor_hpboardid = actor_hpobj.Billboard(NULL, actor_hpsize, "Data\\NTU6\\NPCs\\actor_hp", 0);
 
 	//npc's hp
 	for (int i = 1; i <= NPC_NUMBER; i++){
@@ -240,6 +242,9 @@ void FyMain(int argc, char **argv)
 	room.ID(terrainRoomID);
 	room.AddObject(tID);
 
+	
+
+
 	// load the character
 	FySetModelPath("Data\\NTU6\\Characters");
 	FySetTexturePath("Data\\NTU6\\Characters");
@@ -248,13 +253,17 @@ void FyMain(int argc, char **argv)
 	npc[1].ID = scene.LoadCharacter("Donzo2");
 	npc[2].ID = scene.LoadCharacter("Robber02");
 
-	/*
+	
 	FySetModelPath("Data\\NTU6\\NPCs");
 	FySetTexturePath("Data\\NTU6\\NPCs");
 	FySetCharacterPath("Data\\NTU6\\NPCs");
-	npc2ID = scene.LoadCharacter("AMA001");
-	*/
+	npc[2].ID = scene.LoadCharacter("AMA001");
 	
+	
+	
+	
+
+
 	FySetScenePath("Data\\NTU6\\Scenes");
 	FySetAudioPath("Data\\NTU6\\Media");	
 	
@@ -827,7 +836,7 @@ void RenderIt(int skip)
 	// the lyubu hpID
 	FnObject actor_hpobj;
 	actor_hpobj.ID(actor_hpid);
-	actorPos[2] = actorPos[2] + 100;
+	actorPos[2] = actorPos[2] + 95;
 	actor_hpobj.SetPosition(actorPos);
 	
 	// the npc hpID
