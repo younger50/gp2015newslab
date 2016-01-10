@@ -37,6 +37,7 @@ FnObject Kagemusha;
 AUDIOid background_sound_id;
 FnAudio audobj;
 
+
 //hp
 OBJECTid actor_hpid;
 GEOMETRYid actor_hpboardid;
@@ -856,6 +857,12 @@ void RenderIt(int skip)
 		frame = 0;
 	}
 	//sprintf(debugbuf,"frame %d", frame);
+	if (audobj.IsPlaying()){
+		sprintf(debugbuf, "play");
+	}
+	else if (!(audobj.IsPlaying())){
+		sprintf(debugbuf, "no play");
+	}
 
 	FnText text;
 	text.ID(textID);
@@ -1257,6 +1264,7 @@ void ActorAttack(BYTE code, BOOL4 value)
 	for (int i = 1; i <= NPC_NUMBER; i++){
 		npc[i].AlreadyBeenHit = false;
 	}
+	
 	FnCharacter actor;
 	actor.ID(actorID);
 	CurPoseID = actor.GetCurrentAction(NULL, 0);
@@ -1325,16 +1333,20 @@ void ActorAttack(BYTE code, BOOL4 value)
 			fdir[2] += ddir[2] * 1;
 			dummy.SetDirection(fdir, udir);
 
-			// sound
 			
+			// sound
+
 			if (!audobj.IsPlaying()){
 				audobj.ID(FyCreateAudio());
 				audobj.Load("Data\\NTU6\\Media\\lyubu_ultimate");
 				audobj.SetVolume(200.0f);
 				audobj.Play(ONCE);
+
 			}
 			
+			
 		}
+		
 	}
 }
 
