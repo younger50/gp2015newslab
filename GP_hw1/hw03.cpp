@@ -132,7 +132,12 @@ vector<Node*> open, close, nodelist;
 // timer callbacks
 void GameAI(int);
 void RenderIt(int);
+
+// camera view 
 void Camera3PersonView(float);
+
+// pause
+void RenderPause(int);
 
 // mouse callbacks
 void InitPivot(int, int);
@@ -202,7 +207,6 @@ void FyMain(int argc, char **argv)
 	BOOL beOK1 = terrain.Load("terrain");
 	terrain.Show(FALSE);
 
-
 	//lyubu's hp
 	float actor_hpsize[2] = { 50, 5 };
 	FnObject actor_hpobj;
@@ -234,6 +238,8 @@ void FyMain(int argc, char **argv)
 	// create a new game FX system
 	lyfxID = scene.CreateGameFXSystem();
 	lyfxdumID = scene.CreateObject();
+
+	// creat menu
 
 	// set terrain environment
 	terrainRoomID = scene.CreateRoom(SIMPLE_ROOM, 10);
@@ -372,7 +378,7 @@ void FyMain(int argc, char **argv)
 	uDir[0] = -0.116f; uDir[1] = -0.031f; uDir[2] = 0.993f;
 	camera.SetPosition(pos);
 	camera.SetDirection(fDir, uDir);
-	Camera3PersonView(TRUE); // default face back
+	Camera3PersonView(0); // default face back
 
 	// light
 	float mainLightPos[3] = { -4579.0, -714.0, 15530.0 };
@@ -865,10 +871,44 @@ void RenderIt(int skip)
 	fcpos[2] = pos[2] + fDir[2] * fcdis;
 	fcobj.SetPosition(fcpos);
 
-
 	// swap buffer
 	FySwapBuffers();
 }
+
+// render pause menu
+void RenderPause(int skip){	
+	// show menu background picture
+	FnScene scene(sID);
+	FnObject bgobj;
+	OBJECTid bgID;
+	float bgsize[2] = { 120, 90 };
+	float bgpos[3];
+	float bgdis = 270;
+	bgID = scene.CreateObject(OBJECT);
+	bgobj.ID(bgID);
+	bgobj.Show(TRUE);
+	bgobj.Billboard(NULL, bgsize, "Data\\NTU6\\Menu\\menu_background", 0);
+	// abjust  position
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	bgpos[0] = pos[0] + fdir[0] * bgdis;
+	bgpos[1] = pos[1] + fdir[1] * bgdis;
+	bgpos[2] = pos[2] + fdir[2] * bgdis;
+	bgobj.SetPosition(bgpos);
+
+	// render the whole scene
+	FnViewport vp;
+	vp.ID(vID);
+	vp.Render3D(cID, TRUE, TRUE);
+
+	// swap buffer
+	FySwapBuffers();
+
+	// clear menu
+	scene.DeleteObject(bgID);
+};
 
 /*------------------
 movement control
@@ -1154,12 +1194,14 @@ void PauseGame(BYTE code, BOOL4 value)
 			pause = 1;
 			FyBindTimer(0, 0.0f, NULL, TRUE);
 			FyBindTimer(1, 0.0f, NULL, TRUE);
+			FyBindTimer(5, 30.0f, RenderPause, TRUE);
 		}
 		else{
 			// resume from pause
 			pause = 0;
 			FyBindTimer(0, 30.0f, GameAI, TRUE);
 			FyBindTimer(1, 30.0f, RenderIt, TRUE);
+			FyBindTimer(5, 0.0f, NULL, TRUE);
 		}
 	}
 }
