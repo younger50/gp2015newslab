@@ -116,9 +116,6 @@ void RenderIt(int);
 // camera view 
 void Camera3PersonView(float);
 
-// pause
-void RenderPause(int);
-
 // mouse callbacks
 void InitPivot(int, int);
 void PivotCam(int, int);
@@ -431,7 +428,6 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_Z, ActorAttack, FALSE);	 // Normal Attack
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
 	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
-	FyDefineHotKey(FY_P, PauseGame, FALSE); // Pause main game 
 	FyDefineHotKey(FY_SPACE, ActorDefence, FALSE);    // Defand
 
 	// define some mouse functions
@@ -993,41 +989,6 @@ void StartMenu(int skip){
 	scene.DeleteObject(swID);
 }
 
-// render pause menu
-void RenderPause(int skip){	
-	// show menu background picture
-	FnScene scene(sID);
-	FnObject bgobj;
-	OBJECTid bgID;
-	float bgsize[2] = { 120, 90 };
-	float bgpos[3];
-	float bgdis = 270;
-	bgID = scene.CreateObject(OBJECT);
-	bgobj.ID(bgID);
-	bgobj.Show(TRUE);
-	bgobj.Billboard(NULL, bgsize, "Data\\NTU6\\Menu\\menu_background", 0);
-	// abjust  position
-	FnCamera camera(cID);
-	float pos[3], fdir[3], cdir[3];
-	camera.GetPosition(pos);
-	camera.GetDirection(fdir, cdir);
-	bgpos[0] = pos[0] + fdir[0] * bgdis;
-	bgpos[1] = pos[1] + fdir[1] * bgdis;
-	bgpos[2] = pos[2] + fdir[2] * bgdis;
-	bgobj.SetPosition(bgpos);
-
-	// render the whole scene
-	FnViewport vp;
-	vp.ID(vID);
-	vp.Render3D(cID, TRUE, TRUE);
-
-	// swap buffer
-	FySwapBuffers();
-
-	// clear menu
-	scene.DeleteObject(bgID);
-};
-
 /*------------------
 movement control
 -------------------*/
@@ -1336,26 +1297,6 @@ void ActorDefence(BYTE code, BOOL4 value)
 		}
 		else{
 			actor.SetCurrentAction(NULL, 0, IdleID);
-		}
-	}
-}
-
-void PauseGame(BYTE code, BOOL4 value)
-{
-	if (value){
-		if (pause == 0){
-			// disable game ai and frame render function on pause
-			pause = 1;
-			FyBindTimer(0, 0.0f, NULL, TRUE);
-			FyBindTimer(1, 0.0f, NULL, TRUE);
-			FyBindTimer(5, 1.0f, RenderPause, TRUE);
-		}
-		else{
-			// resume from pause
-			pause = 0;
-			FyBindTimer(0, 30.0f, GameAI, TRUE);
-			FyBindTimer(1, 30.0f, RenderIt, TRUE);
-			FyBindTimer(5, 0.0f, NULL, TRUE);
 		}
 	}
 }
