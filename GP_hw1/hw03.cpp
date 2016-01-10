@@ -24,7 +24,7 @@ float pi = 3.14;
 VIEWPORTid vID;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
-
+OBJECTid wallID;
 
 CHARACTERid actorID;            // the major character
 int actorAttacking = 0, actorAttackFrame = 0; // actor global
@@ -184,7 +184,7 @@ void FyMain(int argc, char **argv)
 	actor_hpid = scene.CreateObject(OBJECT);
 	actor_hpobj.ID(actor_hpid);
 	actor_hpobj.Show(TRUE);
-	actor_hpboardid = actor_hpobj.Billboard(NULL, actor_hpsize, "Data\\NTU6\\NPCs\\hp", 0);
+	actor_hpboardid = actor_hpobj.Billboard(NULL, actor_hpsize, "Data\\NTU6\\NPCs\\actor_hp", 0);
 
 	//npc's hp
 	for (int i = 1; i <= NPC_NUMBER; i++){
@@ -216,6 +216,9 @@ void FyMain(int argc, char **argv)
 	room.ID(terrainRoomID);
 	room.AddObject(tID);
 
+	
+
+
 	// load the character
 	FySetModelPath("Data\\NTU6\\Characters");
 	FySetTexturePath("Data\\NTU6\\Characters");
@@ -236,9 +239,13 @@ void FyMain(int argc, char **argv)
 	FySetModelPath("Data\\NTU6\\NPCs");
 	FySetTexturePath("Data\\NTU6\\NPCs");
 	FySetCharacterPath("Data\\NTU6\\NPCs");
-	npc2ID = scene.LoadCharacter("AMA001");
+	npc[2].ID = scene.LoadCharacter("CA004");
 	*/
 	
+	
+	
+
+
 	FySetScenePath("Data\\NTU6\\Scenes");
 	FySetAudioPath("Data\\NTU6\\Media");	
 	
@@ -248,7 +255,7 @@ void FyMain(int argc, char **argv)
 	background_sound.Load("MUSIC_fogforest");
 
 	//background_sound.SetVolume(100.0f);
-	background_sound.Play(LOOP);
+	//background_sound.Play(LOOP);
 	
 	
 	
@@ -869,7 +876,7 @@ void RenderIt(int skip)
 	// the lyubu hpID
 	FnObject actor_hpobj;
 	actor_hpobj.ID(actor_hpid);
-	actorPos[2] = actorPos[2] + 100;
+	actorPos[2] = actorPos[2] + 95;
 	actor_hpobj.SetPosition(actorPos);
 	
 	// the npc hpID
@@ -1199,9 +1206,10 @@ void ActorAttack(BYTE code, BOOL4 value)
 			fdir[2] += ddir[2] * 1;
 			dummy.SetDirection(fdir, udir);
 
-			// 
+			// sound
 			FnAudio audobj;
-			playmusic(audobj, "Data\\NTU6\\Media\\lyuba_ultimate");
+			playmusic(audobj, "Data\\NTU6\\Media\\lyubu_ultimate");
+			
 		}
 	}
 }
@@ -1456,8 +1464,9 @@ void NPCattackActor(CHARACTERid npcID)
 		actor_AlreadyHit = true;
 		actor_HealthPoints -= 5;
 
-		playmusic(actorishit_sound, "Data\\NTU6\\FX\\swordslash4");
-
+		//sound
+		playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_behit");
+		
 		//hp 's picture is shorter
 		actor_hpsize[0] = actor_hpsize[0] * actor_HealthPoints / 100;
 		actor_hpboard.SetPositionSize(NULL, actor_hpsize);
@@ -1571,17 +1580,25 @@ void isNPCHit()
 			//hp 's picture is shorter
 			npc_hpsize[0] = npc_hpsize[0] * npc[i].HealthPoints / 100;
 			npc_hpboard.SetPositionSize(NULL, npc_hpsize);
-
+			
+			//sound
 			if (npc[i].HealthPoints <= 0)
 			{
 				npcChar.SetCurrentAction(NULL, 0, npc[i].DieID);
+				if (i == 1){
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\donzo_die");
+				}
+				else if (i == 2){
+					playmusic(npcishit_sound, "Data\\NTU6\\Media\\robber_die");
+
+				}
 			}
 			else{
 				npcChar.SetCurrentAction(NULL, 0, npc[i].Damage1ID);
 			}
 
 			//sound
-			playmusic(npcishit_sound, "Data\\NTU6\\FX\\swordslash4");
+			playmusic(npcishit_sound, "Data\\NTU6\\Media\\npc_behit");
 
 		}
 	}
