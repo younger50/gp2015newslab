@@ -56,7 +56,7 @@ ACTIONid HeavyAttack1ID, HeavyAttack2ID, HeavyAttack3ID;
 ACTIONid UltimateAttackID;
 ACTIONid GuardID;
 ACTIONid HeavyDamageID, RightDamageID, LeftDamageID, DieID;
-int actor_HealthPoints = 100;
+int actor_HealthPoints = 20;
 bool actor_AlreadyHit = false;
 
 unsigned int AttackRange = 100;
@@ -158,7 +158,7 @@ C.Wang 1010, 2014
 void FyMain(int argc, char **argv)
 {
 	// create a new world
-	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Homework #03 - Use Fly2", 0, 0, 1024, 768, FALSE);
+	BOOL4 beOK = FyStartFlyWin32("/NTU Game Programming 2015 Final Project - Use Fly2", 0, 0, 1024, 768, FALSE);
 
 	// setup the data searching paths
 	FySetShaderPath("Data\\NTU6\\Shaders");
@@ -1588,6 +1588,7 @@ void NPCattackActor(CHARACTERid npcID)
 			if (actor_HealthPoints <= 0)
 			{
 				actor.SetCurrentAction(NULL, 0, DieID);
+				playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
 			}
 			else if (CurPoseID == GuardID){
 				actor.SetCurrentAction(NULL, 0, RightDamageID);
@@ -1609,6 +1610,8 @@ void NPCattackActor(CHARACTERid npcID)
 		if (actor_HealthPoints <= 0)
 		{
 			actor.SetCurrentAction(NULL, 0, DieID);
+			playmusic(actorishit_sound, "Data\\NTU6\\Media\\lyubu_die", 1);
+
 		}
 		else if (CurPoseID == IdleID){
 			actor.SetCurrentAction(NULL, 0, RightDamageID);
