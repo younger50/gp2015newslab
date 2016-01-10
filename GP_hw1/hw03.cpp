@@ -276,7 +276,7 @@ void FyMain(int argc, char **argv)
 	FnCharacter actor;
 	actor.ID(actorID);
 	pos[0] = 3598.0f; pos[1] = -3907.0f; pos[2] = 1000.0f;
-	fDir[0] = -0.284f; fDir[1] = -0.954f; fDir[2] = -0.1f;
+	fDir[0] = -1.0f; fDir[1] = 0.0f; fDir[2] = 0.0f;
 	uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
 	actor.SetDirection(fDir, uDir);
 	actor.SetTerrainRoom(terrainRoomID, 10.0f);
@@ -549,9 +549,6 @@ void GameAI(int skip)
 		//slash effect
 		if (skill_camera_timer > 80){
 			FnGameFXSystem gxS(lyfxID);
-			FnObject actorWeapon;
-			//float pos[3];
-			//actor.GetPosition(pos);
 			//gxS.SetPlayLocation(pos);
 			gxS.SetParentObjectForAll(lyfxdumID);
 			gxS.Play((float)skip, ONCE);
