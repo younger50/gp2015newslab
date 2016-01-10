@@ -92,8 +92,10 @@ void ActorAttack(BYTE, BOOL4);
 void ActorDefence(BYTE, BOOL4);
 
 // menu 
-void PauseGame(BYTE, BOOL4);
 void StartMenu(int);
+void EndMenu(int);
+void EndKey(BYTE, BOOL4);
+int not_end = 1;
 
 // npc movement
 #define OPEN 0
@@ -429,6 +431,8 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_X, ActorAttack, FALSE);	 // Heavy Attack
 	FyDefineHotKey(FY_C, ActorAttack, FALSE);	// Ultimate Attack
 	FyDefineHotKey(FY_SPACE, ActorDefence, FALSE);    // Defand
+
+	FyDefineHotKey(FY_P, EndKey, FALSE); // Pause main game 
 
 	// define some mouse functions
 	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
@@ -988,6 +992,49 @@ void StartMenu(int skip){
 	// clear word
 	scene.DeleteObject(swID);
 }
+
+OBJECTid ewID;
+void init_EndMenu(){
+	FnScene scene(sID);
+	ewID = scene.CreateObject(OBJECT);
+}
+
+void EndMenu(int skip){
+
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	// show menu end word
+	FnObject ewobj;
+	float ewsize[2] = { 120, 90 };
+	float ewpos[3];
+	float ewdis = 250;
+	ewobj.ID(ewID);
+	ewobj.SetAlphaFlag(TRUE);
+	ewobj.Show(TRUE);
+	ewobj.Billboard(NULL, ewsize, "Data\\NTU6\\Menu\\end", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	ewpos[0] = pos[0] + fdir[0] * ewdis;
+	ewpos[1] = pos[1] + fdir[1] * ewdis;
+	ewpos[2] = pos[2] + fdir[2] * ewdis;
+	ewobj.SetPosition(ewpos);
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		FyQuitFlyWin32();
+	}
+}
+
+void EndKey(BYTE code, BOOL4 value)
+{
+	if (value && not_end == 1) {
+		not_end = 0;
+		// init end menu and keep show it in camera
+		init_EndMenu();
+		FyBindTimer(5, 60.0f, EndMenu, TRUE);
+	}
+}
+
 
 /*------------------
 movement control
