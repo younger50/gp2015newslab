@@ -91,7 +91,9 @@ void Movement(BYTE, BOOL4);
 void ActorAttack(BYTE, BOOL4);
 void ActorDefence(BYTE, BOOL4);
 
+// menu 
 void PauseGame(BYTE, BOOL4);
+void StartMenu(int);
 
 // npc movement
 #define OPEN 0
@@ -438,9 +440,10 @@ void FyMain(int argc, char **argv)
 	FyBindMouseFunction(RIGHT_MOUSE, InitMove, MoveCam, NULL, NULL);
 
 	// bind timers, frame rate = 30 fps
-	FyBindTimer(0, 30.0f, GameAI, TRUE);
-	FyBindTimer(1, 30.0f, RenderIt, TRUE);
-	// FyBindTimer(2, 30.0f, Camera3PersonView, TRUE);
+	//FyBindTimer(0, 30.0f, GameAI, TRUE);
+	//FyBindTimer(1, 30.0f, RenderIt, TRUE);
+	// start from menu
+	FyBindTimer(5, 30.0f, StartMenu, TRUE);
 	// invoke the system
 	FyInvokeFly(TRUE);
 }
@@ -927,6 +930,69 @@ void RenderIt(int skip)
 	FySwapBuffers();
 }
 
+void StartMenu(int skip){
+	// show menu background picture
+	FnScene scene(sID);
+	FnObject bgobj;
+	OBJECTid bgID;
+	float bgsize[2] = { 120, 90 };
+	float bgpos[3];
+	float bgdis = 270;
+	bgID = scene.CreateObject(OBJECT);
+	bgobj.ID(bgID);
+	bgobj.Show(TRUE);
+	bgobj.Billboard(NULL, bgsize, "Data\\NTU6\\Menu\\menu_background", 0);
+	// abjust  position
+	FnCamera camera(cID);
+	float pos[3], fdir[3], cdir[3];
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	bgpos[0] = pos[0] + fdir[0] * bgdis;
+	bgpos[1] = pos[1] + fdir[1] * bgdis;
+	bgpos[2] = pos[2] + fdir[2] * bgdis;
+	bgobj.SetPosition(bgpos);
+	// show menu start word
+	FnObject swobj;
+	OBJECTid swID;
+	float swsize[2] = { 120, 90 };
+	float swpos[3];
+	float swdis = 250;
+	swID = scene.CreateObject(OBJECT);
+	swobj.ID(swID);
+	swobj.SetAlphaFlag(TRUE);
+	swobj.Show(TRUE);
+	swobj.Billboard(NULL, swsize, "Data\\NTU6\\Menu\\start", 0);
+	// abjust  position
+	camera.GetPosition(pos);
+	camera.GetDirection(fdir, cdir);
+	swpos[0] = pos[0] + fdir[0] * swdis;
+	swpos[1] = pos[1] + fdir[1] * swdis;
+	swpos[2] = pos[2] + fdir[2] * swdis;
+	swobj.SetPosition(swpos);
+
+	// render the whole scene
+	FnViewport vp;
+	vp.ID(vID);
+	vp.Render3D(cID, TRUE, TRUE);
+	// swap buffer
+	FySwapBuffers();
+
+	// key detect
+	if (FyCheckHotKeyStatus(FY_E)){
+		// start from menu
+		FyBindTimer(5, 0.0f, NULL, TRUE);
+		// bind main game timers, frame rate = 30 fps
+		FyBindTimer(0, 30.0f, GameAI, TRUE);
+		FyBindTimer(1, 30.0f, RenderIt, TRUE);
+
+	}
+
+	// clear menu
+	scene.DeleteObject(bgID);
+	// clear word
+	scene.DeleteObject(swID);
+}
+
 // render pause menu
 void RenderPause(int skip){	
 	// show menu background picture
@@ -1282,7 +1348,7 @@ void PauseGame(BYTE code, BOOL4 value)
 			pause = 1;
 			FyBindTimer(0, 0.0f, NULL, TRUE);
 			FyBindTimer(1, 0.0f, NULL, TRUE);
-			FyBindTimer(5, 30.0f, RenderPause, TRUE);
+			FyBindTimer(5, 1.0f, RenderPause, TRUE);
 		}
 		else{
 			// resume from pause
